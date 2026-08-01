@@ -215,3 +215,52 @@ body {
         max-height: 220px !important;
     }
 }
+
+/* =========================================
+   COMPACT CHARTS
+   ========================================= */
+
+.charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.chart-box {
+    height: 330px !important;
+    min-height: 330px !important;
+    max-height: 330px !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+}
+
+.chart-box h2 {
+    margin: 0 0 12px 0 !important;
+    font-size: 20px !important;
+}
+
+.chart-box canvas {
+    width: 100% !important;
+    height: 250px !important;
+    max-height: 250px !important;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+
+    .charts {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-box {
+        height: 300px !important;
+        min-height: 300px !important;
+        max-height: 300px !important;
+    }
+
+    .chart-box canvas {
+        height: 220px !important;
+        max-height: 220px !important;
+    }
+}
