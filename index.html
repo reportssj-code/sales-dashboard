@@ -1,127 +1,641 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
     <title>Sales Dashboard</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet"
+          href="style.css">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 
+
 <body>
+
+
+<!-- =====================================================
+     TOP HEADER
+===================================================== -->
 
 <div class="container">
 
     <div class="header">
-        <h1>S Square Marketing Pvt. Ltd. & S Square Ventures</h1>
-        <p>Sales & Performance Analysis</p>
-    </div>
 
-    <!-- FILTERS -->
-    <div class="filters">
+        <h1>
+            S Square Marketing Pvt. Ltd. & S Square Ventures
+        </h1>
 
-        <select id="typeFilter">
-            <option value="">All Type</option>
-        </select>
-
-        <select id="agentFilter">
-            <option value="">All Agent</option>
-        </select>
-
-        <select id="brandFilter">
-            <option value="">All Brand</option>
-        </select>
-
-        <select id="dealerFilter">
-            <option value="">All Dealer</option>
-        </select>
-
-        <select id="monthFilter">
-            <option value="">All Month</option>
-        </select>
-
-        <select id="yearFilter">
-            <option value="">All Year</option>
-        </select>
-
-        <select id="quarterFilter">
-            <option value="">All FY Quarter</option>
-        </select>
-
-        <select id="fyFilter">
-            <option value="">All F Year</option>
-        </select>
-
-        <select id="seasonFilter">
-            <option value="">All Season</option>
-        </select>
+        <p>
+            Sales & Performance Analysis
+        </p>
 
     </div>
 
 
-    <!-- KPI CARDS -->
-    <div class="cards">
+    <!-- =================================================
+         DASHBOARD TABS
+    ================================================== -->
 
-        <div class="card">
-            <div class="card-title">TOTAL VALUE</div>
-            <div class="card-value" id="totalValue">₹ 0</div>
-        </div>
+    <div class="dashboard-tabs">
 
-        <div class="card">
-            <div class="card-title">TOTAL QUANTITY</div>
-            <div class="card-value" id="totalQty">0</div>
-        </div>
+        <button
+            class="dash-tab active"
+            onclick="showDashboard(1)">
 
-        <div class="card">
-            <div class="card-title">TOTAL INVOICES</div>
-            <div class="card-value" id="totalInvoices">0</div>
-        </div>
+            Dashboard 1
 
-        <div class="card">
-            <div class="card-title">TOTAL DEALERS</div>
-            <div class="card-value" id="totalDealers">0</div>
-        </div>
-
-    </div>
+        </button>
 
 
-    <!-- CHARTS -->
-    <div class="charts">
+        <button
+            class="dash-tab"
+            onclick="showDashboard(2)">
 
-        <div class="chart-box">
-            <h2>Brand Wise Value</h2>
-            <canvas id="brandChart"></canvas>
-        </div>
+            Dashboard 2
 
-        <div class="chart-box">
-            <h2>Month Wise Value</h2>
-            <canvas id="monthChart"></canvas>
-        </div>
+        </button>
 
     </div>
 
 
-    <div class="charts">
+    <!-- =================================================
+         DASHBOARD 1
+         AAPKA CURRENT DASHBOARD
+    ================================================== -->
 
-        <div class="chart-box">
-            <h2>Agent Wise Value</h2>
-            <canvas id="agentChart"></canvas>
+    <div id="dashboard1">
+
+
+        <!-- FILTERS -->
+
+        <div class="filters">
+
+            <select id="typeFilter">
+
+                <option value="">
+                    All Type
+                </option>
+
+            </select>
+
+
+            <select id="agentFilter">
+
+                <option value="">
+                    All Agent
+                </option>
+
+            </select>
+
+
+            <select id="brandFilter">
+
+                <option value="">
+                    All Brand
+                </option>
+
+            </select>
+
+
+            <select id="dealerFilter">
+
+                <option value="">
+                    All Dealer
+                </option>
+
+            </select>
+
+
+            <select id="monthFilter">
+
+                <option value="">
+                    All Month
+                </option>
+
+            </select>
+
+
+            <select id="yearFilter">
+
+                <option value="">
+                    All Year
+                </option>
+
+            </select>
+
+
+            <select id="quarterFilter">
+
+                <option value="">
+                    All FY Quarter
+                </option>
+
+            </select>
+
+
+            <select id="fyFilter">
+
+                <option value="">
+                    All F Year
+                </option>
+
+            </select>
+
+
+            <select id="seasonFilter">
+
+                <option value="">
+                    All Season
+                </option>
+
+            </select>
+
         </div>
 
-        <div class="chart-box">
-            <h2>Dealer Wise Value</h2>
-            <canvas id="dealerChart"></canvas>
+
+        <!-- KPI CARDS -->
+
+        <div class="cards">
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    TOTAL VALUE
+                </div>
+
+                <div
+                    class="card-value"
+                    id="totalValue">
+
+                    ₹ 0
+
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    TOTAL QUANTITY
+                </div>
+
+                <div
+                    class="card-value"
+                    id="totalQty">
+
+                    0
+
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    TOTAL INVOICES
+                </div>
+
+                <div
+                    class="card-value"
+                    id="totalInvoices">
+
+                    0
+
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    TOTAL DEALERS
+                </div>
+
+                <div
+                    class="card-value"
+                    id="totalDealers">
+
+                    0
+
+                </div>
+
+            </div>
+
         </div>
+
+
+        <!-- CHARTS -->
+
+        <div class="charts">
+
+
+            <div class="chart-box">
+
+                <h2>
+                    Brand Wise Value
+                </h2>
+
+                <canvas id="brandChart"></canvas>
+
+            </div>
+
+
+            <div class="chart-box">
+
+                <h2>
+                    Month Wise Value
+                </h2>
+
+                <canvas id="monthChart"></canvas>
+
+            </div>
+
+
+        </div>
+
+
+        <div class="charts">
+
+
+            <div class="chart-box">
+
+                <h2>
+                    Agent Wise Value
+                </h2>
+
+                <canvas id="agentChart"></canvas>
+
+            </div>
+
+
+            <div class="chart-box">
+
+                <h2>
+                    Dealer Wise Value
+                </h2>
+
+                <canvas id="dealerChart"></canvas>
+
+            </div>
+
+
+        </div>
+
 
     </div>
+
 
 </div>
 
 
+
+<!-- =====================================================
+     DASHBOARD 2
+===================================================== -->
+
+<section
+    id="dashboard2"
+    class="dashboard2">
+
+
+    <!-- DASHBOARD 2 HEADER -->
+
+    <div class="dashboard2-header">
+
+        <div>
+
+            <h1>
+                Dashboard 2
+            </h1>
+
+            <p>
+                Brand Wise Target vs Achievement
+                & Financial Year Comparison
+            </p>
+
+        </div>
+
+
+        <button
+            class="reset-btn"
+            onclick="resetDashboard2()">
+
+            ↻ Reset Filters
+
+        </button>
+
+    </div>
+
+
+
+    <!-- =================================================
+         DASHBOARD 2 FILTERS
+    ================================================== -->
+
+    <div class="dashboard2-filters">
+
+
+        <!-- F YEAR -->
+
+        <div>
+
+            <label>
+                F YEAR
+            </label>
+
+            <div
+                class="multi-select"
+                id="d2-fy">
+
+                <button
+                    type="button"
+                    onclick="toggleMulti('d2-fy')">
+
+                    All F Year ▾
+
+                </button>
+
+                <div class="multi-menu"></div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- TYPE -->
+
+        <div>
+
+            <label>
+                TYPE
+            </label>
+
+            <div
+                class="multi-select"
+                id="d2-type">
+
+                <button
+                    type="button"
+                    onclick="toggleMulti('d2-type')">
+
+                    All Type ▾
+
+                </button>
+
+                <div class="multi-menu"></div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- BRAND -->
+
+        <div>
+
+            <label>
+                BRAND
+            </label>
+
+            <div
+                class="multi-select"
+                id="d2-brand">
+
+                <button
+                    type="button"
+                    onclick="toggleMulti('d2-brand')">
+
+                    All Brand ▾
+
+                </button>
+
+                <div class="multi-menu"></div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- DEALER -->
+
+        <div>
+
+            <label>
+                DEALER
+            </label>
+
+            <div
+                class="multi-select"
+                id="d2-dealer">
+
+                <button
+                    type="button"
+                    onclick="toggleMulti('d2-dealer')">
+
+                    All Dealer ▾
+
+                </button>
+
+                <div class="multi-menu"></div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- FROM DATE -->
+
+        <div>
+
+            <label>
+                FROM DATE
+            </label>
+
+            <input
+                type="date"
+                id="d2-from">
+
+        </div>
+
+
+
+        <!-- TO DATE -->
+
+        <div>
+
+            <label>
+                TO DATE
+            </label>
+
+            <input
+                type="date"
+                id="d2-to">
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =================================================
+         DASHBOARD 2 KPI CARDS
+    ================================================== -->
+
+    <div class="dashboard2-kpis">
+
+
+        <div class="d2-card">
+
+            <small>
+                TOTAL TARGET VALUE
+            </small>
+
+            <strong id="d2-target">
+                ₹ 0
+            </strong>
+
+        </div>
+
+
+        <div class="d2-card">
+
+            <small>
+                TOTAL SALE VALUE
+            </small>
+
+            <strong id="d2-sales">
+                ₹ 0
+            </strong>
+
+        </div>
+
+
+        <div class="d2-card">
+
+            <small>
+                TOTAL RETURN VALUE
+            </small>
+
+            <strong id="d2-return">
+                ₹ 0
+            </strong>
+
+        </div>
+
+
+        <div class="d2-card">
+
+            <small>
+                NET SALE
+            </small>
+
+            <strong id="d2-net">
+                ₹ 0
+            </strong>
+
+        </div>
+
+
+        <div class="d2-card">
+
+            <small>
+                ACHIEVE %
+            </small>
+
+            <strong id="d2-achieve">
+                0%
+            </strong>
+
+        </div>
+
+
+        <div class="d2-card">
+
+            <small>
+                RETURN %
+            </small>
+
+            <strong id="d2-return-pct">
+                0%
+            </strong>
+
+        </div>
+
+
+        <div class="d2-card">
+
+            <small>
+                NO OF DEALER
+            </small>
+
+            <strong id="d2-dealers">
+                0
+            </strong>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =================================================
+         DASHBOARD 2 TABLE
+    ================================================== -->
+
+    <div class="dashboard2-table-card">
+
+
+        <h2>
+            Brand Wise Target vs Achievement
+        </h2>
+
+
+        <p class="table-subtitle">
+            Last 3 Financial Year Comparison
+        </p>
+
+
+        <div class="table-scroll">
+
+            <table id="dashboard2-table">
+
+            </table>
+
+        </div>
+
+
+    </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     MAIN JAVASCRIPT
+===================================================== -->
+
 <script src="script.js"></script>
 
+
 </body>
+
 </html>
