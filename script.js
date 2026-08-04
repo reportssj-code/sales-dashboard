@@ -4745,747 +4745,1279 @@ console.log(
 );
 
 // ============================================================
-// PART 4
-// EXPORT + ACTIVE FILTER REPORT
-// Paste this AFTER PART 3
+// PART 4 — FIXED VERSION
+// DASHBOARD 1
+// Dealer Wise Table + Sorting + Current Filter Report
+// Excel Export + PDF Export
+// IMPORTANT: Existing Part 1/2/3 functions ko replace nahi karta.
 // ============================================================
 
+(function () {
 
-// ============================================================
-// LOAD EXCEL LIBRARY
-// ============================================================
+  // ------------------------------------------------------------
+  // GLOBAL TABLE SETTINGS
+  // ------------------------------------------------------------
 
-function loadXLSX(){
+  let d1TableSortColumn = "dealer";
+  let d1TableSortDirection = "asc";
 
-    return new Promise((resolve,reject)=>{
+  // ------------------------------------------------------------
+  // SAFE HTML
+  // ------------------------------------------------------------
 
-        if(window.XLSX){
-            resolve();
-            return;
+  function d1Safe(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // ------------------------------------------------------------
+  // GET FILTER TEXT
+  // ------------------------------------------------------------
+
+  function d1CurrentFilterText() {
+
+    const defs = [
+      ["typeFilter", "TYPE"],
+      ["agentFilter", "AGENT NAME"],
+      ["brandFilter", "BRAND NAME"],
+      ["dealerFilter", "DEALER NAME"],
+      ["fyFilter", "F YEAR"],
+      ["monthFilter", "MONTH"],
+      ["yearFilter", "YEAR"],
+      ["quarterFilter", "FY QUARTER"],
+      ["seasonFilter", "SEASON"]
+    ];
+
+    return defs.map(function (item) {
+
+      const id = item[0];
+      const label = item[1];
+
+      if (
+        typeof d1Selected === "undefined" ||
+        !d1Selected[id] ||
+        d1Selected[id].size === 0
+      ) {
+        return label + ": All";
+      }
+
+      return label + ": " +
+        Array.from(d1Selected[id]).join(", ");
+
+    }).join(" | ");
+  }
+
+  // ------------------------------------------------------------
+  // CREATE / FIND TABLE AREA
+  // ------------------------------------------------------------
+
+  function d1GetTableCard() {
+
+    let card = document.getElementById("dashboard1-table-card");
+
+    if (card) return card;
+
+    const dashboard = document.getElementById("dashboard1");
+
+    if (!dashboard) return null;
+
+    card = document.createElement("div");
+    card.id = "dashboard1-table-card";
+    card.className = "dashboard1-table-card";
+
+    card.innerHTML = `
+      <div class="d1-table-heading">
+        <div>
+          <h2>DEALER WISE TARGET vs ACHIEVEMENT</h2>
+          <div class="d1-table-subtitle">
+            LAST 3 FINANCIAL YEARS COMPARISON
+          </div>
+        </div>
+
+        <div class="d1-table-actions">
+          <button type="button"
+                  id="d1ExportExcel"
+                  class="d1-export-excel">
+            📊 Export Excel
+          </button>
+
+          <button type="button"
+                  id="d1ExportPDF"
+                  class="d1-export-pdf">
+            📄 Export PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="d1-sort-help">
+        Click column header to sort
+        <br>
+        ↑ Ascending / ↓ Descending
+      </div>
+
+      <div class="d1-table-scroll">
+        <table id="dashboard1-table">
+        </table>
+      </div>
+    `;
+
+    dashboard.appendChild(card);
+
+    document.getElementById("d1ExportExcel")
+      .addEventListener("click", d1ExportExcel);
+
+    document.getElementById("d1ExportPDF")
+      .addEventListener("click", d1ExportPDF);
+
+    return card;
+  }
+
+  // ------------------------------------------------------------
+  // TABLE CSS
+  // ------------------------------------------------------------
+
+  function d1AddTableCSS() {
+
+    if (document.getElementById("d1-fixed-table-css")) return;
+
+    const style = document.createElement("style");
+    style.id = "d1-fixed-table-css";
+
+    style.textContent = `
+
+      .dashboard1-table-card {
+        margin-top: 16px;
+        background: #fff;
+        border: 1px solid #b7ddfa;
+        border-radius: 12px;
+        padding: 14px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .d1-table-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 15px;
+        margin-bottom: 5px;
+      }
+
+      .d1-table-heading h2 {
+        margin: 0;
+        font-size: 20px;
+        color: #0879bd;
+      }
+
+      .d1-table-subtitle {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #718096;
+      }
+
+      .d1-table-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .d1-table-actions button {
+        border: 0;
+        color: #fff;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .d1-export-excel {
+        background: #159447;
+      }
+
+      .d1-export-pdf {
+        background: #e44747;
+      }
+
+      .d1-sort-help {
+        position: absolute;
+        right: 18px;
+        top: 55px;
+        color: #159447;
+        font-size: 11px;
+        text-align: right;
+        line-height: 1.3;
+      }
+
+      .d1-table-scroll {
+        margin-top: 10px;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 600px;
+        border-radius: 6px;
+      }
+
+      #dashboard1-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1100px;
+        font-size: 12px;
+      }
+
+      #dashboard1-table th {
+        background: #087dbb;
+        color: #fff;
+        padding: 9px 7px;
+        border: 1px solid #d6e8f5;
+        text-align: center;
+        white-space: nowrap;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #dashboard1-table th:hover {
+        background: #056b9f;
+      }
+
+      #dashboard1-table td {
+        padding: 7px;
+        border: 1px solid #dce8ef;
+        white-space: nowrap;
+      }
+
+      #dashboard1-table tbody tr:nth-child(even) {
+        background: #f5faff;
+      }
+
+      #dashboard1-table tbody tr:hover {
+        background: #eaf6ff;
+      }
+
+      #dashboard1-table td:first-child {
+        text-align: center;
+        font-weight: 600;
+      }
+
+      #dashboard1-table td:nth-child(2) {
+        text-align: left;
+        font-weight: 600;
+      }
+
+      #dashboard1-table td:not(:nth-child(2)):not(:first-child) {
+        text-align: right;
+      }
+
+      .d1-sort-arrow {
+        font-size: 11px;
+        margin-left: 4px;
+      }
+
+      .d1-growth-positive {
+        color: #159447;
+        font-weight: 700;
+      }
+
+      .d1-growth-negative {
+        color: #df3434;
+        font-weight: 700;
+      }
+
+      .d1-report-line {
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid #b7ddfa;
+        border-radius: 10px;
+        padding: 12px 15px;
+        color: #2d5877;
+        font-size: 14px;
+      }
+
+      .d1-report-line strong {
+        color: #087dbb;
+      }
+
+      @media(max-width:700px) {
+
+        .d1-table-heading {
+          flex-direction: column;
         }
 
-        const script=document.createElement("script");
+        .d1-sort-help {
+          position: static;
+          text-align: left;
+          margin-bottom: 8px;
+        }
 
-        script.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        .d1-table-actions {
+          width: 100%;
+        }
 
-        script.onload=()=>resolve();
-        script.onerror=()=>reject("Excel library load failed");
+        .d1-table-actions button {
+          flex: 1;
+        }
 
-        document.head.appendChild(script);
+      }
+
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  // ------------------------------------------------------------
+  // GET COLUMN NAME SAFELY
+  // ------------------------------------------------------------
+
+  function d1Column(possibleNames) {
+
+    if (typeof allData === "undefined" || !allData.length) {
+      return "";
+    }
+
+    const headers = Object.keys(allData[0]);
+
+    for (const name of possibleNames) {
+
+      const target = String(name)
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "");
+
+      const found = headers.find(function (h) {
+
+        return String(h)
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, "") === target;
+
+      });
+
+      if (found) return found;
+    }
+
+    return "";
+  }
+
+  // ------------------------------------------------------------
+  // FINANCIAL YEAR
+  // ------------------------------------------------------------
+
+  function d1GetFY(row) {
+
+    const fyCol = d1Column([
+      "F YEAR",
+      "FY",
+      "FINANCIAL YEAR"
+    ]);
+
+    if (fyCol && row[fyCol]) {
+      return String(row[fyCol]).trim();
+    }
+
+    return "";
+  }
+
+  // ------------------------------------------------------------
+  // DEALER-WISE DATA
+  // ------------------------------------------------------------
+
+  function d1BuildDealerData(rows) {
+
+    const dealerCol = d1Column([
+      "DEALER NAME",
+      "DEALER"
+    ]);
+
+    if (!dealerCol) return {};
+
+    const groups = {};
+
+    rows.forEach(function (r) {
+
+      const dealer = String(r[dealerCol] || "").trim();
+
+      if (!dealer) return;
+
+      const fy = d1GetFY(r);
+
+      if (!groups[dealer]) {
+        groups[dealer] = {};
+      }
+
+      if (!groups[dealer][fy]) {
+        groups[dealer][fy] = {
+          target: 0,
+          qty: 0,
+          net: 0
+        };
+      }
+
+      groups[dealer][fy].target += targetOf(r);
+      groups[dealer][fy].qty +=
+        qtySaleOf(r) - qtyReturnOf(r);
+
+      groups[dealer][fy].net += netOf(r);
 
     });
 
-}
+    return groups;
+  }
 
+  // ------------------------------------------------------------
+  // SORT YEARS
+  // ------------------------------------------------------------
 
-// ============================================================
-// LOAD PDF LIBRARY
-// ============================================================
+  function d1GetYears(rows) {
 
-function loadPDF(){
+    const years = [
+      ...new Set(
+        rows
+          .map(d1GetFY)
+          .filter(Boolean)
+      )
+    ];
 
-    return new Promise((resolve,reject)=>{
+    return years.sort(function (a, b) {
 
-        if(window.jspdf){
-            resolve();
-            return;
+      return String(b).localeCompare(
+        String(a),
+        undefined,
+        {
+          numeric: true
         }
+      );
 
-        const script=document.createElement("script");
+    }).slice(0, 3);
+  }
 
-        script.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  // ------------------------------------------------------------
+  // SORT TABLE
+  // ------------------------------------------------------------
 
-        script.onload=()=>{
+  function d1SortRows(list) {
 
-            const autoTable=document.createElement("script");
+    return list.sort(function (a, b) {
 
-            autoTable.src=
-            "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
+      let av = a[d1TableSortColumn];
+      let bv = b[d1TableSortColumn];
 
-            autoTable.onload=()=>resolve();
+      if (
+        d1TableSortColumn === "dealer"
+      ) {
 
-            autoTable.onerror=()=>reject("PDF table library load failed");
+        av = String(av || "").toUpperCase();
+        bv = String(bv || "").toUpperCase();
 
-            document.head.appendChild(autoTable);
+      } else {
 
+        av = Number(av || 0);
+        bv = Number(bv || 0);
+
+      }
+
+      let result = 0;
+
+      if (typeof av === "string") {
+
+        result = av.localeCompare(
+          bv,
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base"
+          }
+        );
+
+      } else {
+
+        result = av - bv;
+
+      }
+
+      return d1TableSortDirection === "asc"
+        ? result
+        : -result;
+
+    });
+
+  }
+
+  // ------------------------------------------------------------
+  // SORT HEADER
+  // ------------------------------------------------------------
+
+  function d1SortHeader(key) {
+
+    if (d1TableSortColumn === key) {
+
+      d1TableSortDirection =
+        d1TableSortDirection === "asc"
+          ? "desc"
+          : "asc";
+
+    } else {
+
+      d1TableSortColumn = key;
+      d1TableSortDirection = "asc";
+
+    }
+
+    d1RenderTable();
+
+  }
+
+  window.d1SortHeader = d1SortHeader;
+
+  // ------------------------------------------------------------
+  // SORT ARROW
+  // ------------------------------------------------------------
+
+  function d1Arrow(key) {
+
+    if (d1TableSortColumn !== key) {
+      return "↕";
+    }
+
+    return d1TableSortDirection === "asc"
+      ? "↑"
+      : "↓";
+  }
+
+  // ------------------------------------------------------------
+  // TABLE HEADER
+  // ------------------------------------------------------------
+
+  function d1TH(text, key, rowSpan, colSpan) {
+
+    rowSpan = rowSpan || 1;
+    colSpan = colSpan || 1;
+
+    return `
+      <th
+        rowspan="${rowSpan}"
+        colspan="${colSpan}"
+        onclick="d1SortHeader('${key}')"
+      >
+        ${d1Safe(text)}
+        <span class="d1-sort-arrow">
+          ${d1Arrow(key)}
+        </span>
+      </th>
+    `;
+  }
+
+  // ------------------------------------------------------------
+  // RENDER TABLE
+  // ------------------------------------------------------------
+
+  function d1RenderTable() {
+
+    const table = document.getElementById(
+      "dashboard1-table"
+    );
+
+    if (!table) return;
+
+    if (
+      typeof allData === "undefined" ||
+      !Array.isArray(allData) ||
+      !allData.length
+    ) {
+
+      table.innerHTML = `
+        <tbody>
+          <tr>
+            <td style="text-align:center;padding:30px;">
+              Data loading...
+            </td>
+          </tr>
+        </tbody>
+      `;
+
+      return;
+    }
+
+    let rows;
+
+    try {
+
+      rows = getD1Data();
+
+    } catch (e) {
+
+      console.error(
+        "Dashboard 1 filter error:",
+        e
+      );
+
+      rows = allData;
+
+    }
+
+    const years = d1GetYears(rows);
+    const groups = d1BuildDealerData(rows);
+
+    let dealers = Object.keys(groups);
+
+    dealers = dealers.map(function (dealer) {
+
+      const vals = years.map(function (fy) {
+
+        return groups[dealer][fy] || {
+          target: 0,
+          qty: 0,
+          net: 0
         };
 
-        script.onerror=()=>reject("PDF library load failed");
+      });
 
-        document.head.appendChild(script);
+      const current =
+        vals.length > 0 ? vals[0] : {
+          target: 0,
+          qty: 0,
+          net: 0
+        };
+
+      const previous =
+        vals.length > 1 ? vals[1] : {
+          target: 0,
+          qty: 0,
+          net: 0
+        };
+
+      const twoYearsAgo =
+        vals.length > 2 ? vals[2] : {
+          target: 0,
+          qty: 0,
+          net: 0
+        };
+
+      const growth1 =
+        previous.net !== 0
+          ? (
+              (current.net - previous.net) /
+              Math.abs(previous.net)
+            ) * 100
+          : null;
+
+      const growth2 =
+        twoYearsAgo.net !== 0
+          ? (
+              (previous.net - twoYearsAgo.net) /
+              Math.abs(twoYearsAgo.net)
+            ) * 100
+          : null;
+
+      return {
+        dealer: dealer,
+        vals: vals,
+        target: current.target,
+        qty: current.qty,
+        net: current.net,
+        achieve:
+          current.target
+            ? (current.net / current.target) * 100
+            : 0,
+        growth1: growth1,
+        growth2: growth2
+      };
 
     });
 
-}
+    // Sorting
+    dealers.sort(function (a, b) {
 
+      let av;
+      let bv;
 
-// ============================================================
-// GET ACTIVE FILTER REPORT
-// ============================================================
+      switch (d1TableSortColumn) {
 
-function getActiveFilterReport(){
+        case "target":
+          av = a.target;
+          bv = b.target;
+          break;
 
-    const filters=[];
+        case "qty":
+          av = a.qty;
+          bv = b.qty;
+          break;
 
-    Object.entries(d1FilterDefs).forEach(([id,[col,label]])=>{
+        case "net":
+          av = a.net;
+          bv = b.net;
+          break;
 
-        const selected=d1Selected[id];
+        case "achieve":
+          av = a.achieve;
+          bv = b.achieve;
+          break;
 
-        if(selected && selected.size){
+        case "growth1":
+          av = a.growth1 == null
+            ? -Infinity
+            : a.growth1;
 
-            filters.push(
-                label + ": " + [...selected].join(", ")
-            );
+          bv = b.growth1 == null
+            ? -Infinity
+            : b.growth1;
 
-        }else{
+          break;
 
-            filters.push(
-                label + ": All"
-            );
+        case "growth2":
+          av = a.growth2 == null
+            ? -Infinity
+            : a.growth2;
 
-        }
+          bv = b.growth2 == null
+            ? -Infinity
+            : b.growth2;
+
+          break;
+
+        default:
+          av = a.dealer.toUpperCase();
+          bv = b.dealer.toUpperCase();
+
+      }
+
+      let result;
+
+      if (typeof av === "string") {
+
+        result = av.localeCompare(
+          bv,
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base"
+          }
+        );
+
+      } else {
+
+        result = av - bv;
+
+      }
+
+      return d1TableSortDirection === "asc"
+        ? result
+        : -result;
 
     });
 
-    return filters;
+    // ----------------------------------------------------------
+    // HEADER
+    // ----------------------------------------------------------
 
-}
+    let html = `
+      <thead>
 
+        <tr>
 
-// ============================================================
-// FILTER REPORT TEXT
-// ============================================================
+          ${d1TH("S.NO", "sno", 2, 1)}
 
-function getFilterReportText(){
+          ${d1TH(
+            "DEALER NAME",
+            "dealer",
+            2,
+            1
+          )}
 
-    const filters=getActiveFilterReport();
+    `;
 
-    return filters.join(" | ");
+    years.forEach(function (year) {
 
-}
+      html += `
+        <th colspan="4">
+          ${d1Safe(year)}
+        </th>
+      `;
 
+    });
 
-// ============================================================
-// SHOW ACTIVE FILTER REPORT
-// ============================================================
+    html += `
+          <th colspan="2">
+            GROWTH %
+          </th>
 
-function updateActiveFilterReport(){
+        </tr>
 
-    let box=document.getElementById("activeFilterReport");
+        <tr>
+    `;
 
-    if(!box){
+    years.forEach(function () {
 
-        box=document.createElement("div");
+      html += `
+        ${d1TH("TARGET", "target")}
+        ${d1TH("NET QTY", "qty")}
+        ${d1TH("NET VALUE", "net")}
+        ${d1TH("ACHIEVE %", "achieve")}
+      `;
 
-        box.id="activeFilterReport";
+    });
 
-        box.style.cssText=`
+    html += `
+          ${d1TH("CY vs PY", "growth1")}
+          ${d1TH("PY vs 2Y AGO", "growth2")}
+        </tr>
 
-            background:#ffffff;
-            border:1px solid #b9e3ff;
-            border-radius:10px;
-            padding:10px 14px;
-            margin:0 0 15px 0;
-            color:#36566e;
-            font-size:13px;
-            line-height:1.6;
-            box-shadow:0 2px 8px rgba(0,0,0,.04);
+      </thead>
 
+      <tbody>
+    `;
+
+    // ----------------------------------------------------------
+    // BODY
+    // ----------------------------------------------------------
+
+    dealers.forEach(function (dealer, index) {
+
+      html += `
+        <tr>
+
+          <td>${index + 1}</td>
+
+          <td>
+            ${d1Safe(dealer.dealer)}
+          </td>
+      `;
+
+      dealer.vals.forEach(function (v) {
+
+        html += `
+          <td>${money(v.target)}</td>
+          <td>${numberFmt(v.qty)}</td>
+          <td>${money(v.net)}</td>
+          <td>${pct(
+            v.target
+              ? (v.net / v.target) * 100
+              : 0
+          )}</td>
         `;
 
-        const tableCard=document.querySelector(
-            "#dashboard1 .dashboard1-table-card"
-        );
+      });
 
-        if(tableCard){
+      const g1 = dealer.growth1;
+      const g2 = dealer.growth2;
 
-            tableCard.parentNode.insertBefore(
-                box,
-                tableCard
-            );
+      html += `
+        <td class="${
+          g1 == null
+            ? ""
+            : g1 >= 0
+              ? "d1-growth-positive"
+              : "d1-growth-negative"
+        }">
+          ${
+            g1 == null
+              ? "—"
+              : pct(g1) +
+                (g1 >= 0 ? " ↑" : " ↓")
+          }
+        </td>
 
-        }else{
+        <td class="${
+          g2 == null
+            ? ""
+            : g2 >= 0
+              ? "d1-growth-positive"
+              : "d1-growth-negative"
+        }">
+          ${
+            g2 == null
+              ? "—"
+              : pct(g2) +
+                (g2 >= 0 ? " ↑" : " ↓")
+          }
+        </td>
 
-            const dashboard=document.getElementById("dashboard1");
+        </tr>
+      `;
 
-            if(dashboard){
+    });
 
-                dashboard.appendChild(box);
+    if (!dealers.length) {
 
-            }
-
-        }
+      html += `
+        <tr>
+          <td
+            colspan="${2 + years.length * 4 + 2}"
+            style="
+              text-align:center;
+              padding:30px;
+              color:#777;
+            "
+          >
+            No data found for selected filters.
+          </td>
+        </tr>
+      `;
 
     }
 
-    box.innerHTML=
+    html += `
+      </tbody>
+    `;
 
-        "<b style='color:#0878bd;'>Current Report:</b> " +
+    table.innerHTML = html;
 
-        getFilterReportText();
+  }
 
-}
+  // ------------------------------------------------------------
+  // CURRENT REPORT LINE
+  // ------------------------------------------------------------
 
+  function d1RenderCurrentReport() {
 
-// ============================================================
-// EXPORT TABLE DATA
-// ============================================================
+    const dashboard =
+      document.getElementById("dashboard1");
 
-function getDashboard1TableData(){
+    if (!dashboard) return;
 
-    const table=document.getElementById(
-        "dashboard1-dealer-table"
-    ) || document.getElementById(
-        "dealerWiseTable"
-    ) || document.querySelector(
-        "#dashboard1 table"
+    let line =
+      document.getElementById(
+        "d1-current-report"
+      );
+
+    if (!line) {
+
+      line = document.createElement("div");
+      line.id = "d1-current-report";
+      line.className = "d1-report-line";
+
+      dashboard.appendChild(line);
+
+    }
+
+    line.innerHTML = `
+      <strong>Current Report:</strong>
+      ${d1Safe(d1CurrentFilterText())}
+    `;
+
+  }
+
+  // ------------------------------------------------------------
+  // EXPORT EXCEL
+  // ------------------------------------------------------------
+
+  function d1ExportExcel() {
+
+    const table =
+      document.getElementById(
+        "dashboard1-table"
+      );
+
+    if (!table) {
+
+      alert("Dashboard 1 table nahi mila.");
+      return;
+
+    }
+
+    const reportName =
+      "Dealer Wise Target vs Achievement";
+
+    const html = `
+      <html>
+      <head>
+        <meta charset="UTF-8">
+      </head>
+      <body>
+
+        <h2>S Square Marketing Pvt. Ltd. & S Square Ventures</h2>
+
+        <h3>${reportName}</h3>
+
+        <p>
+          ${d1CurrentFilterText()}
+        </p>
+
+        ${table.outerHTML}
+
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(
+      ["\ufeff", html],
+      {
+        type:
+          "application/vnd.ms-excel;charset=utf-8;"
+      }
     );
 
-    if(!table){
+    const url =
+      URL.createObjectURL(blob);
 
-        alert("Dashboard 1 Dealer Table nahi mila.");
+    const a =
+      document.createElement("a");
 
-        return null;
+    a.href = url;
+    a.download =
+      "Dealer_Wise_Target_vs_Achievement.xls";
 
-    }
+    document.body.appendChild(a);
+    a.click();
 
-    return table;
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-}
+  }
 
+  // ------------------------------------------------------------
+  // EXPORT PDF
+  // ------------------------------------------------------------
 
-// ============================================================
-// EXPORT TO EXCEL
-// ============================================================
+  function d1ExportPDF() {
 
-async function exportDashboard1Excel(){
+    const table =
+      document.getElementById(
+        "dashboard1-table"
+      );
 
-    try{
+    if (!table) {
 
-        await loadXLSX();
-
-        const table=getDashboard1TableData();
-
-        if(!table)return;
-
-        const wb=XLSX.utils.book_new();
-
-        const ws=XLSX.utils.table_to_sheet(table);
-
-        XLSX.utils.book_append_sheet(
-            wb,
-            ws,
-            "Dealer Wise Report"
-        );
-
-
-        // ----------------------------------------------------
-        // FILTER INFORMATION
-        // ----------------------------------------------------
-
-        const filterText=getFilterReportText();
-
-        XLSX.utils.sheet_add_aoa(
-
-            ws,
-
-            [
-                [],
-                ["FILTER REPORT"],
-                [filterText]
-            ],
-
-            {
-                origin:-1
-            }
-
-        );
-
-
-        // ----------------------------------------------------
-        // COLUMN WIDTH
-        // ----------------------------------------------------
-
-        const range=XLSX.utils.decode_range(
-            ws["!ref"]
-        );
-
-        const widths=[];
-
-        for(let c=range.s.c;c<=range.e.c;c++){
-
-            let max=12;
-
-            for(let r=range.s.r;r<=range.e.r;r++){
-
-                const cell=
-                    ws[
-                        XLSX.utils.encode_cell({
-                            r:r,
-                            c:c
-                        })
-                    ];
-
-                if(cell && cell.v!=null){
-
-                    max=Math.max(
-                        max,
-                        String(cell.v).length+2
-                    );
-
-                }
-
-            }
-
-            widths.push({
-                wch:Math.min(max,35)
-            });
-
-        }
-
-        ws["!cols"]=widths;
-
-
-        // ----------------------------------------------------
-        // FILE NAME
-        // ----------------------------------------------------
-
-        const now=new Date();
-
-        const date=
-
-            now.getFullYear()+"-"+
-
-            String(now.getMonth()+1).padStart(2,"0")+"-"+
-
-            String(now.getDate()).padStart(2,"0");
-
-
-        XLSX.writeFile(
-
-            wb,
-
-            "S_Square_Dealer_Wise_Report_"+date+".xlsx"
-
-        );
+      alert("Dashboard 1 table nahi mila.");
+      return;
 
     }
 
-    catch(error){
+    const win =
+      window.open(
+        "",
+        "_blank"
+      );
 
-        console.error(error);
+    if (!win) {
 
-        alert(
-            "Excel export nahi ho paya. Please dobara try karein."
-        );
+      alert(
+        "PDF ke liye popup allow karein."
+      );
+
+      return;
 
     }
 
-}
+    win.document.write(`
+      <!DOCTYPE html>
 
+      <html>
 
-// ============================================================
-// EXPORT TO PDF
-// ============================================================
+      <head>
 
-async function exportDashboard1PDF(){
+        <meta charset="UTF-8">
 
-    try{
+        <title>
+          Dealer Wise Target vs Achievement
+        </title>
 
-        await loadPDF();
+        <style>
 
-        const table=getDashboard1TableData();
+          @page {
+            size: landscape;
+            margin: 10mm;
+          }
 
-        if(!table)return;
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 9px;
+          }
 
-        const {jsPDF}=window.jspdf;
+          h2 {
+            color: #087dbb;
+            margin-bottom: 4px;
+          }
 
+          h3 {
+            margin: 4px 0;
+          }
 
-        // ----------------------------------------------------
-        // LANDSCAPE PDF
-        // ----------------------------------------------------
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
 
-        const doc=new jsPDF({
+          th {
+            background: #087dbb;
+            color: white;
+            border: 1px solid #ccc;
+            padding: 5px;
+          }
 
-            orientation:"landscape",
+          td {
+            border: 1px solid #ccc;
+            padding: 4px;
+          }
 
-            unit:"mm",
+          td {
+            text-align: right;
+          }
 
-            format:"a4"
+          td:nth-child(1),
+          td:nth-child(2) {
+            text-align: left;
+          }
 
-        });
+        </style>
 
+      </head>
 
-        // ----------------------------------------------------
-        // TITLE
-        // ----------------------------------------------------
+      <body>
 
-        doc.setFontSize(16);
+        <h2>
+          S Square Marketing Pvt. Ltd. & S Square Ventures
+        </h2>
 
-        doc.setFont(
-            "helvetica",
-            "bold"
-        );
+        <h3>
+          Dealer Wise Target vs Achievement
+        </h3>
 
-        doc.text(
+        <div>
+          ${d1Safe(d1CurrentFilterText())}
+        </div>
 
-            "S Square Marketing Pvt. Ltd. & S Square Ventures",
+        <br>
 
-            148,
+        ${table.outerHTML}
 
-            12,
+      </body>
 
-            {
-                align:"center"
-            }
+      </html>
+    `);
 
-        );
+    win.document.close();
 
+    setTimeout(function () {
 
-        doc.setFontSize(11);
+      win.focus();
+      win.print();
 
-        doc.setFont(
-            "helvetica",
-            "normal"
-        );
+    }, 500);
 
-        doc.text(
+  }
 
-            "Dealer Wise Sales Report",
+  // ------------------------------------------------------------
+  // WRAP EXISTING DASHBOARD 1 UPDATE
+  // ------------------------------------------------------------
 
-            148,
+  function d1InstallUpdateHook() {
 
-            19,
+    if (
+      typeof window.updateDashboard1 !==
+      "function"
+    ) {
 
-            {
-                align:"center"
-            }
-
-        );
-
-
-        // ----------------------------------------------------
-        // FILTER REPORT
-        // ----------------------------------------------------
-
-        const filterText=getFilterReportText();
-
-        doc.setFontSize(7);
-
-        const filterLines=
-            doc.splitTextToSize(
-                "Filters: "+filterText,
-                275
-            );
-
-        doc.text(
-            filterLines,
-            10,
-            27
-        );
-
-
-        // ----------------------------------------------------
-        // TABLE
-        // ----------------------------------------------------
-
-        doc.autoTable({
-
-            html:table,
-
-            startY:35,
-
-            theme:"grid",
-
-            styles:{
-
-                fontSize:7,
-
-                cellPadding:2,
-
-                overflow:"linebreak",
-
-                halign:"right"
-
-            },
-
-            headStyles:{
-
-                fillColor:[8,120,189],
-
-                textColor:255,
-
-                fontStyle:"bold",
-
-                halign:"center"
-
-            },
-
-            columnStyles:{
-
-                0:{
-                    halign:"center"
-                }
-
-            },
-
-            didParseCell:function(data){
-
-                if(
-                    data.section==="body" &&
-                    data.column.index===0
-                ){
-
-                    data.cell.styles.halign="center";
-
-                }
-
-            }
-
-        });
-
-
-        // ----------------------------------------------------
-        // FOOTER
-        // ----------------------------------------------------
-
-        const pages=
-            doc.internal.getNumberOfPages();
-
-        for(let i=1;i<=pages;i++){
-
-            doc.setPage(i);
-
-            doc.setFontSize(7);
-
-            doc.text(
-
-                "Page "+i+" of "+pages,
-
-                285,
-
-                202,
-
-                {
-                    align:"right"
-                }
-
-            );
-
-        }
-
-
-        // ----------------------------------------------------
-        // SAVE
-        // ----------------------------------------------------
-
-        const now=new Date();
-
-        const date=
-
-            now.getFullYear()+"-"+
-
-            String(now.getMonth()+1).padStart(2,"0")+"-"+
-
-            String(now.getDate()).padStart(2,"0");
-
-
-        doc.save(
-
-            "S_Square_Dealer_Wise_Report_"+date+".pdf"
-
-        );
+      return false;
 
     }
 
-    catch(error){
+    if (
+      window.updateDashboard1.__d1FixedPart4
+    ) {
 
-        console.error(error);
-
-        alert(
-            "PDF export nahi ho paya. Please dobara try karein."
-        );
+      return true;
 
     }
 
-}
+    const oldUpdate =
+      window.updateDashboard1;
 
+    function fixedUpdateDashboard1() {
 
-// ============================================================
-// EXPORT BUTTONS CREATE
-// ============================================================
+      // IMPORTANT:
+      // Pehle existing KPI + charts update honge.
+      oldUpdate();
 
-function createDashboard1ExportButtons(){
+      // Uske baad table/report update hoga.
+      d1RenderTable();
+      d1RenderCurrentReport();
 
-    let existing=
-        document.getElementById(
-            "dashboard1ExportButtons"
-        );
+    }
 
-    if(existing)return;
+    fixedUpdateDashboard1.__d1FixedPart4 = true;
 
+    window.updateDashboard1 =
+      fixedUpdateDashboard1;
 
-    const table=
+    return true;
 
-        document.getElementById(
-            "dashboard1-dealer-table"
-        ) ||
+  }
 
-        document.getElementById(
-            "dealerWiseTable"
-        ) ||
+  // ------------------------------------------------------------
+  // INITIALIZE
+  // ------------------------------------------------------------
 
-        document.querySelector(
-            "#dashboard1 table"
-        );
+  function d1Part4Init() {
 
+    d1AddTableCSS();
 
-    if(!table)return;
+    d1GetTableCard();
 
+    d1InstallUpdateHook();
 
-    const wrapper=document.createElement("div");
+    if (
+      typeof allData !== "undefined" &&
+      Array.isArray(allData) &&
+      allData.length
+    ) {
 
-    wrapper.id="dashboard1ExportButtons";
+      d1RenderTable();
+      d1RenderCurrentReport();
 
-    wrapper.style.cssText=`
+    }
 
-        display:flex;
-        justify-content:flex-end;
-        align-items:center;
-        gap:8px;
-        margin-bottom:10px;
-        flex-wrap:wrap;
+  }
 
-    `;
+  // ------------------------------------------------------------
+  // RECHECK AFTER EXISTING SCRIPT LOAD
+  // ------------------------------------------------------------
 
-
-    // ----------------------------------------------------
-    // EXCEL BUTTON
-    // ----------------------------------------------------
-
-    const excel=document.createElement("button");
-
-    excel.type="button";
-
-    excel.innerHTML="📊 Export Excel";
-
-    excel.style.cssText=`
-
-        border:none;
-        background:#168a45;
-        color:#ffffff;
-        padding:9px 16px;
-        border-radius:7px;
-        font-size:13px;
-        font-weight:700;
-        cursor:pointer;
-
-    `;
-
-    excel.onclick=exportDashboard1Excel;
-
-
-    // ----------------------------------------------------
-    // PDF BUTTON
-    // ----------------------------------------------------
-
-    const pdf=document.createElement("button");
-
-    pdf.type="button";
-
-    pdf.innerHTML="📄 Export PDF";
-
-    pdf.style.cssText=`
-
-        border:none;
-        background:#d64545;
-        color:#ffffff;
-        padding:9px 16px;
-        border-radius:7px;
-        font-size:13px;
-        font-weight:700;
-        cursor:pointer;
-
-    `;
-
-    pdf.onclick=exportDashboard1PDF;
-
-
-    wrapper.appendChild(excel);
-
-    wrapper.appendChild(pdf);
-
-
-    table.parentNode.insertBefore(
-
-        wrapper,
-
-        table
-
-    );
-
-}
-
-
-// ============================================================
-// REFRESH REPORT UI
-// ============================================================
-
-function refreshDashboard1ReportUI(){
-
-    updateActiveFilterReport();
-
-    createDashboard1ExportButtons();
-
-}
-
-
-// ============================================================
-// HOOK INTO DASHBOARD 1 UPDATE
-// ============================================================
-
-const _originalUpdateDashboard1=
-    window.updateDashboard1;
-
-if(typeof _originalUpdateDashboard1==="function"){
-
-    window.updateDashboard1=function(){
-
-        _originalUpdateDashboard1();
-
-        setTimeout(
-            refreshDashboard1ReportUI,
-            100
-        );
-
-    };
-
-}
-
-
-// ============================================================
-// INITIAL LOAD
-// ============================================================
-
-document.addEventListener(
-
+  document.addEventListener(
     "DOMContentLoaded",
+    function () {
 
-    function(){
+      d1Part4Init();
 
-        setTimeout(
+      setTimeout(
+        d1Part4Init,
+        500
+      );
 
-            refreshDashboard1ReportUI,
+      setTimeout(
+        d1Part4Init,
+        1500
+      );
 
-            1500
-
-        );
+      setTimeout(
+        d1Part4Init,
+        3000
+      );
 
     }
+  );
 
-);
+  // ------------------------------------------------------------
+  // ALSO WATCH DATA LOAD
+  // ------------------------------------------------------------
 
+  const d1Wait =
+    setInterval(function () {
 
-// ============================================================
-// PART 4 END
-// ============================================================
+      if (
+        typeof allData !== "undefined" &&
+        Array.isArray(allData) &&
+        allData.length
+      ) {
+
+        d1Part4Init();
+
+        clearInterval(d1Wait);
+
+      }
+
+    }, 500);
+
+})();
