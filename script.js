@@ -6,6 +6,7 @@
 const CSV_URL =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vQkx61LU5M5w6cafCI36sVjmFbBZ5lK2krxwI-uxLsblvc0RBX5YHk7C9iKFbQvYM9RAcFQwYcuIdkn/pub?gid=1181069336&single=true&output=csv";
 
+
 let allData = [];
 let charts = {};
 
@@ -19,7 +20,7 @@ let sharedDataPromise = null;
 let dataLoaded = false;
 
 const DATA_CACHE_KEY = "ssquare_sales_dashboard_data";
-const DATA_CACHE_TIME = 2 * 60 * 1000;
+const DATA_CACHE_TIME = 2 * 60 * 1000; // 2 minutes
 
 
 // ============================================================
@@ -142,9 +143,7 @@ function parseCSV(text){
         ){
 
             if(c === '\r' && next === '\n'){
-
                 i++;
-
             }
 
             row.push(value.trim());
@@ -253,9 +252,7 @@ function money(v){
     if(v >= 1e7){
 
         return "₹ " +
-
             (v / 1e7).toFixed(2) +
-
             " Cr";
 
     }
@@ -264,26 +261,18 @@ function money(v){
     if(v >= 1e5){
 
         return "₹ " +
-
             (v / 1e5).toFixed(2) +
-
             " L";
 
     }
 
 
     return "₹ " +
-
         v.toLocaleString(
-
             "en-IN",
-
             {
-
                 maximumFractionDigits:0
-
             }
-
         );
 
 }
@@ -296,15 +285,10 @@ function money(v){
 function numberFmt(v){
 
     return Number(v || 0).toLocaleString(
-
         "en-IN",
-
         {
-
             maximumFractionDigits:0
-
         }
-
     );
 
 }
@@ -317,9 +301,7 @@ function numberFmt(v){
 function pct(v){
 
     return (
-
         Number(v) || 0
-
     ).toFixed(2) + "%";
 
 }
@@ -332,9 +314,7 @@ function pct(v){
 function norm(v){
 
     return String(v || "")
-
         .trim()
-
         .toUpperCase();
 
 }
@@ -382,9 +362,7 @@ function dataType(row){
 function targetOf(row){
 
     return dataType(row) === "TARGET"
-
         ? num(row["VALUE"])
-
         : 0;
 
 }
@@ -393,9 +371,7 @@ function targetOf(row){
 function saleOf(row){
 
     return dataType(row) === "SALE"
-
         ? num(row["VALUE"])
-
         : 0;
 
 }
@@ -404,9 +380,7 @@ function saleOf(row){
 function returnOf(row){
 
     return dataType(row) === "RETURN"
-
         ? Math.abs(num(row["VALUE"]))
-
         : 0;
 
 }
@@ -415,9 +389,7 @@ function returnOf(row){
 function qtySaleOf(row){
 
     return dataType(row) === "SALE"
-
         ? num(row["QTY"])
-
         : 0;
 
 }
@@ -426,9 +398,7 @@ function qtySaleOf(row){
 function qtyReturnOf(row){
 
     return dataType(row) === "RETURN"
-
         ? Math.abs(num(row["QTY"]))
-
         : 0;
 
 }
@@ -437,7 +407,6 @@ function qtyReturnOf(row){
 function netOf(row){
 
     return saleOf(row) -
-
         returnOf(row);
 
 }
@@ -463,190 +432,136 @@ function escapeHtml(s){
 
 
 // ============================================================
+// LOAD DATA
+// ============================================================
+
+// ============================================================
 // FAST SHARED GOOGLE SHEET LOADER
 // ============================================================
 
-async function loadGoogleSheetData(){
+async function loadGoogleSheetData() {
 
-    if(sharedDataPromise){
-
+    // Already loading / loaded
+    if (sharedDataPromise) {
         return sharedDataPromise;
-
     }
-
 
     sharedDataPromise = (async () => {
 
-        showDataLoading(
-            "🔄 Loading Google Sheet Data..."
-        );
+        showDataLoading("🔄 Loading Sheet Data...");
 
-
-        try{
+        try {
 
             // ------------------------------------------------
-            // STEP 1: Cached data
+            // STEP 1: Cached data se dashboard turant dikhao
             // ------------------------------------------------
 
-            try{
+            try {
 
-                const cached =
-                    localStorage.getItem(
-                        DATA_CACHE_KEY
-                    );
+                const cached = localStorage.getItem(DATA_CACHE_KEY);
 
+                if (cached) {
 
-                if(cached){
+                    const obj = JSON.parse(cached);
 
-                    const obj =
-                        JSON.parse(cached);
-
-
-                    if(
-
+                    if (
                         obj.time &&
-
                         Array.isArray(obj.data) &&
-
-                        Date.now() - obj.time <
-                        DATA_CACHE_TIME
-
-                    ){
+                        Date.now() - obj.time < DATA_CACHE_TIME
+                    ) {
 
                         allData = obj.data;
 
-
                         console.log(
-
                             "Using cached data:",
-
                             allData.length,
-
                             "rows"
-
                         );
 
                     }
 
                 }
 
-            }
-
-            catch(cacheError){
+            } catch (cacheError) {
 
                 console.warn(
-
                     "Cache read failed:",
-
                     cacheError
-
                 );
 
             }
 
 
             // ------------------------------------------------
-            // STEP 2: Cache se dashboard turant dikhao
+            // STEP 2: Agar cache mila to pehle dashboard dikhao
             // ------------------------------------------------
 
-            if(allData.length){
+            if (allData.length) {
 
                 dataLoaded = true;
 
                 setupD1Filters();
-
                 updateDashboard1();
 
-
                 showDataLoading(
-
-                    "🔄 Syncing latest Google Sheet data..."
-
+                    "🔄 Syncing latest data..."
                 );
 
             }
 
 
             // ------------------------------------------------
-            // STEP 3: Latest Google Sheet fetch
+            // STEP 3: Latest Google Sheet data fetch
             // ------------------------------------------------
 
             const url =
-
                 CSV_URL +
-
                 "&t=" +
-
                 Date.now();
 
-
             const controller =
-
                 new AbortController();
 
-
             const timeout =
-
                 setTimeout(
-
                     () => controller.abort(),
-
                     30000
-
                 );
-
 
             const response =
-
                 await fetch(
-
                     url,
-
                     {
-
-                        method:"GET",
-
-                        cache:"no-store",
-
-                        signal:controller.signal
-
+                        method: "GET",
+                        cache: "no-store",
+                        signal: controller.signal
                     }
-
                 );
-
 
             clearTimeout(timeout);
 
 
-            if(!response.ok){
+            if (!response.ok) {
 
                 throw new Error(
-
                     "Google Sheet HTTP Error: " +
-
                     response.status
-
                 );
 
             }
 
 
             const text =
-
                 await response.text();
 
-
             const freshData =
-
                 parseCSV(text);
 
 
-            if(!freshData.length){
+            if (!freshData.length) {
 
                 throw new Error(
-
                     "Google Sheet returned empty data"
-
                 );
 
             }
@@ -661,32 +576,21 @@ async function loadGoogleSheetData(){
             dataLoaded = true;
 
 
-            try{
+            try {
 
                 localStorage.setItem(
-
                     DATA_CACHE_KEY,
-
                     JSON.stringify({
-
-                        time:Date.now(),
-
-                        data:allData
-
+                        time: Date.now(),
+                        data: allData
                     })
-
                 );
 
-            }
-
-            catch(cacheError){
+            } catch (cacheError) {
 
                 console.warn(
-
                     "Cache save failed:",
-
                     cacheError
-
                 );
 
             }
@@ -702,64 +606,23 @@ async function loadGoogleSheetData(){
 
 
             // ------------------------------------------------
-            // STEP 6: Dashboard 2
+            // STEP 6: Dashboard 2 agar already open/load ho
             // ------------------------------------------------
 
             d2Data = allData;
-
             d2Headers =
-
-                Object.keys(
-
-                    allData[0] || {}
-
-                );
+                Object.keys(allData[0] || {});
 
 
-            if(
+            if (
+                document.getElementById("dashboard2") &&
+                document.getElementById("dashboard2").style.display !== "none"
+            ) {
 
-                document.getElementById(
-                    "dashboard2"
-                ) &&
-
-                document.getElementById(
-                    "dashboard2"
-                ).style.display !== "none"
-
-            ){
-
-                d2SetupMulti(
-
-                    "fy",
-
-                    "d2-fy"
-
-                );
-
-                d2SetupMulti(
-
-                    "type",
-
-                    "d2-type"
-
-                );
-
-                d2SetupMulti(
-
-                    "brand",
-
-                    "d2-brand"
-
-                );
-
-                d2SetupMulti(
-
-                    "dealer",
-
-                    "d2-dealer"
-
-                );
-
+                d2SetupMulti("fy", "d2-fy");
+                d2SetupMulti("type", "d2-type");
+                d2SetupMulti("brand", "d2-brand");
+                d2SetupMulti("dealer", "d2-dealer");
 
                 d2Update();
 
@@ -771,76 +634,55 @@ async function loadGoogleSheetData(){
             // ------------------------------------------------
 
             showDataLoading(
-
                 "✓ Data Synced • " +
-
                 numberFmt(allData.length) +
-
                 " Rows"
-
             );
 
 
             setTimeout(
-
                 hideDataLoading,
-
                 1800
-
             );
 
 
             console.log(
-
                 "Google Sheet synced:",
-
                 allData.length,
-
                 "rows"
-
             );
 
 
             return allData;
 
 
-        }
-
-        catch(error){
+        } catch (error) {
 
             console.error(
-
                 "Google Sheet Load Error:",
-
                 error
-
             );
 
 
-            if(allData.length){
+            // ------------------------------------------------
+            // Cache available ho to dashboard ko chalne do
+            // ------------------------------------------------
+
+            if (allData.length) {
 
                 dataLoaded = true;
 
                 setupD1Filters();
-
                 updateDashboard1();
 
-
                 showDataLoading(
-
                     "⚠ Latest sync failed • Showing saved data"
-
                 );
-
 
                 setTimeout(
-
                     hideDataLoading,
-
                     3500
-
                 );
-
 
                 return allData;
 
@@ -848,18 +690,13 @@ async function loadGoogleSheetData(){
 
 
             showDataLoading(
-
                 "❌ Google Sheet data load failed"
-
             );
 
 
             alert(
-
-                "Google Sheet se data load nahi ho pa raha hai.\n\n" +
-
+                "Data load nahi ho pa raha hai.\n\n" +
                 "Internet connection aur Published CSV link check karein."
-
             );
 
 
@@ -871,7 +708,6 @@ async function loadGoogleSheetData(){
 
 
     return sharedDataPromise;
-
 }
 
 
@@ -879,57 +715,43 @@ async function loadGoogleSheetData(){
 // LOADING STATUS
 // ============================================================
 
-function showDataLoading(message){
+function showDataLoading(message) {
 
     let box =
-
         document.getElementById(
-
             "dataSyncStatus"
-
         );
 
 
-    if(!box){
+    if (!box) {
 
         box =
-
             document.createElement("div");
 
-
         box.id =
-
             "dataSyncStatus";
 
 
         box.style.cssText = `
-
             position:fixed;
-
             top:15px;
-
             right:15px;
-
             z-index:999999;
 
             background:#ffffff;
-
             color:#0878bd;
 
             border:1px solid #b9e3ff;
-
             border-radius:22px;
 
             padding:9px 16px;
 
             font-size:12px;
-
             font-weight:700;
 
             box-shadow:0 5px 20px rgba(0,0,0,.12);
 
             transition:all .3s ease;
-
         `;
 
 
@@ -938,42 +760,40 @@ function showDataLoading(message){
     }
 
 
-    box.textContent = message;
+    box.textContent =
+        message;
 
-    box.style.display = "block";
+    box.style.display =
+        "block";
 
 }
 
 
-function hideDataLoading(){
+function hideDataLoading() {
 
     const box =
-
         document.getElementById(
-
             "dataSyncStatus"
-
         );
 
+    if (box) {
 
-    if(box){
-
-        box.style.opacity = "0";
-
+        box.style.opacity =
+            "0";
 
         setTimeout(() => {
 
-            box.style.display = "none";
+            box.style.display =
+                "none";
 
-            box.style.opacity = "1";
+            box.style.opacity =
+                "1";
 
-        },300);
+        }, 300);
 
     }
 
 }
-
-
 // ============================================================
 // SETUP DASHBOARD 1 FILTERS
 // ============================================================
@@ -981,290 +801,223 @@ function hideDataLoading(){
 function setupD1Filters(){
 
     Object.entries(d1FilterDefs).forEach(
-
         ([id,[column,label]]) => {
 
-            const box =
 
-                document.getElementById(
-
-                    id + "Box"
-
-                );
-
-
-            if(!box){
-
-                return;
-
-            }
-
-
-            const options =
-
-                box.querySelector(
-
-                    "#" +
-
-                    id +
-
-                    "Options"
-
-                );
-
-
-            if(!options){
-
-                return;
-
-            }
-
-
-            options.innerHTML = "";
-
-
-            const values = [
-
-                ...new Set(
-
-                    allData
-
-                        .map(
-
-                            row =>
-
-                            String(
-
-                                row[column] || ""
-
-                            ).trim()
-
-                        )
-
-                        .filter(Boolean)
-
-                )
-
-            ];
-
-
-            values.sort(
-
-                (a,b) =>
-
-                a.localeCompare(
-
-                    b,
-
-                    undefined,
-
-                    {
-
-                        numeric:true
-
-                    }
-
-                )
-
+        const box =
+            document.getElementById(
+                id + "Box"
             );
 
 
-            values.forEach(value => {
+        if(!box){
 
-                const labelEl =
+            return;
 
-                    document.createElement(
-
-                        "label"
-
-                    );
+        }
 
 
-                labelEl.className =
-
-                    "filter-option";
-
-
-                labelEl.innerHTML = `
-
-                    <input
-
-                        type="checkbox"
-
-                        value="${escapeHtml(value)}"
-
-                    >
-
-                    <span>
-
-                        ${escapeHtml(value)}
-
-                    </span>
-
-                `;
+        const options =
+            box.querySelector(
+                "#" +
+                id +
+                "Options"
+            );
 
 
-                options.appendChild(
+        if(!options){
 
-                    labelEl
+            return;
 
+        }
+
+
+        options.innerHTML = "";
+
+
+        const values = [
+
+            ...new Set(
+
+                allData
+
+                .map(
+                    row =>
+                    String(
+                        row[column] || ""
+                    ).trim()
+                )
+
+                .filter(Boolean)
+
+            )
+
+        ];
+
+
+        values.sort(
+            (a,b) =>
+            a.localeCompare(
+                b,
+                undefined,
+                {
+                    numeric:true
+                }
+            )
+        );
+
+
+        values.forEach(value => {
+
+            const labelEl =
+                document.createElement(
+                    "label"
                 );
 
 
-                const checkbox =
-
-                    labelEl.querySelector(
-
-                        "input"
-
-                    );
+            labelEl.className =
+                "filter-option";
 
 
-                checkbox.addEventListener(
+            labelEl.innerHTML = `
 
-                    "change",
+                <input
+                    type="checkbox"
+                    value="${escapeHtml(value)}"
+                >
 
-                    function(){
+                <span>
+                    ${escapeHtml(value)}
+                </span>
 
-                        if(this.checked){
-
-                            d1Selected[id]
-
-                                .add(this.value);
-
-                        }
-
-                        else{
-
-                            d1Selected[id]
-
-                                .delete(this.value);
-
-                        }
+            `;
 
 
-                        updateD1Button(
-
-                            id,
-
-                            label
-
-                        );
+            options.appendChild(
+                labelEl
+            );
 
 
-                        updateDashboard1();
-
-                    }
-
-                );
-
-            });
-
-
-            const allCheckbox =
-
-                box.querySelector(
-
-                    ".select-all"
-
+            const checkbox =
+                labelEl.querySelector(
+                    "input"
                 );
 
 
-            allCheckbox.checked = true;
-
-
-            allCheckbox.addEventListener(
-
+            checkbox.addEventListener(
                 "change",
-
                 function(){
 
                     if(this.checked){
 
                         d1Selected[id]
-
-                            .clear();
-
-
-                        options
-
-                            .querySelectorAll(
-
-                                "input"
-
-                            )
-
-                            .forEach(
-
-                                cb =>
-
-                                cb.checked = false
-
-                            );
+                            .add(this.value);
 
                     }
 
                     else{
 
-                        options
-
-                            .querySelectorAll(
-
-                                "input"
-
-                            )
-
-                            .forEach(
-
-                                cb =>
-
-                                cb.checked = true
-
-                            );
-
-
-                        values.forEach(
-
-                            value =>
-
-                            d1Selected[id]
-
-                                .add(value)
-
-                        );
+                        d1Selected[id]
+                            .delete(this.value);
 
                     }
 
 
                     updateD1Button(
-
                         id,
-
                         label
-
                     );
 
 
                     updateDashboard1();
 
                 }
-
             );
 
-        }
+        });
 
-    );
+
+        const allCheckbox =
+            box.querySelector(
+                ".select-all"
+            );
+
+
+        allCheckbox.checked = true;
+
+
+        allCheckbox.addEventListener(
+            "change",
+            function(){
+
+                if(this.checked){
+
+                    d1Selected[id]
+                        .clear();
+
+
+                    options
+                        .querySelectorAll(
+                            "input"
+                        )
+                        .forEach(
+                            cb =>
+                            cb.checked = false
+                        );
+
+                }
+
+                else{
+
+                    options
+                        .querySelectorAll(
+                            "input"
+                        )
+                        .forEach(
+                            cb =>
+                            cb.checked = true
+                        );
+
+
+                    values.forEach(
+                        value =>
+                        d1Selected[id]
+                            .add(value)
+                    );
+
+                }
+
+
+                updateD1Button(
+                    id,
+                    label
+                );
+
+
+                updateDashboard1();
+
+            }
+        );
+
+    });
 
 }
 
+
 // ============================================================
-// DASHBOARD 1 FILTER SEARCH
+// FILTER SEARCH
 // ============================================================
 
-function searchFilter(boxId, searchText){
+function searchFilter(
+    boxId,
+    searchValue
+){
 
     const box =
-        document.getElementById(boxId);
+        document.getElementById(
+            boxId
+        );
+
 
     if(!box){
 
@@ -1273,77 +1026,113 @@ function searchFilter(boxId, searchText){
     }
 
 
-    const options =
-        box.querySelector(
-
-            "[id$='FilterOptions']"
-
-        );
-
-
-    if(!options){
-
-        return;
-
-    }
-
-
     const search =
-        String(searchText || "")
-
-            .trim()
-
-            .toLowerCase();
+        searchValue.toLowerCase();
 
 
-    options
+    box.querySelectorAll(
+        ".filter-option:not(.filter-all)"
+    )
+    .forEach(option => {
 
-        .querySelectorAll(
-
-            ".filter-option"
-
-        )
-
-        .forEach(label => {
-
-            const text =
-
-                label.textContent
-
-                    .trim()
-
-                    .toLowerCase();
+        const text =
+            option.textContent
+                .toLowerCase();
 
 
-            label.style.display =
+        option.style.display =
+            text.includes(search)
+            ? "flex"
+            : "none";
 
-                text.includes(search)
-
-                    ? "flex"
-
-                    : "none";
-
-        });
+    });
 
 }
 
 
 // ============================================================
-// DASHBOARD 1 FILTER BUTTON TEXT
+// TOGGLE FILTER
 // ============================================================
 
-function updateD1Button(id,label){
+function toggleD1Filter(id){
 
-    const textElement =
+    const target =
+        document.getElementById(id);
 
-        document.getElementById(
 
-            id + "Text"
+    document
+        .querySelectorAll(
+            ".filter-box"
+        )
+        .forEach(box => {
 
+            if(box !== target){
+
+                box.classList.remove(
+                    "open"
+                );
+
+            }
+
+        });
+
+
+    target.classList.toggle(
+        "open"
+    );
+
+}
+
+
+// ============================================================
+// CLOSE FILTER
+// ============================================================
+
+document.addEventListener(
+    "click",
+    function(event){
+
+        if(
+            !event.target.closest(
+                ".filter-box"
+            )
+        ){
+
+            document
+                .querySelectorAll(
+                    ".filter-box"
+                )
+                .forEach(
+                    box =>
+                    box.classList.remove(
+                        "open"
+                    )
+                );
+
+        }
+
+    }
+);
+
+
+// ============================================================
+// FILTER BUTTON TEXT
+// ============================================================
+
+function updateD1Button(
+    id,
+    label
+){
+
+    const text =
+        document.querySelector(
+            "#" +
+            id +
+            "Box .filter-button span:first-child"
         );
 
 
-    if(!textElement){
+    if(!text){
 
         return;
 
@@ -1351,39 +1140,19 @@ function updateD1Button(id,label){
 
 
     const count =
-
-        d1Selected[id]
-
-            ? d1Selected[id].size
-
-            : 0;
+        d1Selected[id].size;
 
 
-    if(count === 0){
-
-        textElement.textContent =
-
-            "All " + label;
-
-    }
-
-    else{
-
-        textElement.textContent =
-
-            count +
-
-            " Selected " +
-
-            label;
-
-    }
+    text.textContent =
+        count
+        ? count + " Selected"
+        : "All " + label;
 
 }
 
 
 // ============================================================
-// DASHBOARD 1 FILTERED DATA
+// FILTER DATA
 // ============================================================
 
 function getD1Data(){
@@ -1391,293 +1160,29 @@ function getD1Data(){
     return allData.filter(row => {
 
         return Object.entries(
-
             d1FilterDefs
-
         ).every(
-
             ([id,[column]]) => {
 
-                const selected =
-
-                    d1Selected[id];
-
-
-                if(
-
-                    !selected ||
-
-                    selected.size === 0
-
-                ){
-
-                    return true;
-
-                }
-
-
                 const value =
-
                     String(
-
                         row[column] || ""
-
                     ).trim();
 
 
-                return selected.has(value);
-
-            }
-
-        );
-
-    });
-
-}
-
-
-// ============================================================
-// RESET DASHBOARD 1 FILTERS
-// ============================================================
-
-function resetFilters(){
-
-    Object.keys(
-
-        d1FilterDefs
-
-    ).forEach(id => {
-
-        d1Selected[id].clear();
-
-
-        const box =
-
-            document.getElementById(
-
-                id + "Box"
-
-            );
-
-
-        if(!box){
-
-            return;
-
-        }
-
-
-        box.querySelectorAll(
-
-            "input[type='checkbox']"
-
-        ).forEach(
-
-            checkbox => {
-
-                checkbox.checked = false;
-
-            }
-
-        );
-
-
-        const allCheckbox =
-
-            box.querySelector(
-
-                ".select-all"
-
-            );
-
-
-        if(allCheckbox){
-
-            allCheckbox.checked = true;
-
-        }
-
-
-        const search =
-
-            box.querySelector(
-
-                ".filter-search"
-
-            );
-
-
-        if(search){
-
-            search.value = "";
-
-        }
-
-
-        box.querySelectorAll(
-
-            ".filter-option"
-
-        ).forEach(
-
-            option => {
-
-                option.style.display = "flex";
-
-            }
-
-        );
-
-
-        const label =
-
-            d1FilterDefs[id][1];
-
-
-        updateD1Button(
-
-            id,
-
-            label
-
-        );
-
-    });
-
-
-    updateDashboard1();
-
-}
-
-
-// ============================================================
-// CLOSE DASHBOARD 1 DROPDOWNS
-// ============================================================
-
-document.addEventListener(
-
-    "click",
-
-    function(event){
-
-        if(
-
-            !event.target.closest(
-
-                ".filter-box"
-
-            )
-
-        ){
-
-            document
-
-                .querySelectorAll(
-
-                    ".filter-box.open"
-
-                )
-
-                .forEach(
-
-                    box =>
-
-                    box.classList.remove(
-
-                        "open"
-
-                    )
-
+                return (
+                    !d1Selected[id].size
+                    ||
+                    d1Selected[id]
+                        .has(value)
                 );
 
-        }
-
-    }
-
-);
-
-
-// ============================================================
-// OPEN / CLOSE DASHBOARD 1 FILTER
-// ============================================================
-
-document.addEventListener(
-
-    "click",
-
-    function(event){
-
-        const button =
-
-            event.target.closest(
-
-                ".filter-button"
-
-            );
-
-
-        if(!button){
-
-            return;
-
-        }
-
-
-        const box =
-
-            button.closest(
-
-                ".filter-box"
-
-            );
-
-
-        if(!box){
-
-            return;
-
-        }
-
-
-        event.stopPropagation();
-
-
-        document
-
-            .querySelectorAll(
-
-                ".filter-box.open"
-
-            )
-
-            .forEach(
-
-                other => {
-
-                    if(other !== box){
-
-                        other.classList.remove(
-
-                            "open"
-
-                        );
-
-                    }
-
-                }
-
-            );
-
-
-        box.classList.toggle(
-
-            "open"
-
+            }
         );
 
-    }
+    });
 
-);
+}
 
 
 // ============================================================
@@ -1687,11 +1192,12 @@ document.addEventListener(
 function updateDashboard1(){
 
     const data =
-
         getD1Data();
 
 
     updateD1KPI(data);
+
+    updateDealerStatus(data);
 
     updateBrandChart(data);
 
@@ -1701,13 +1207,11 @@ function updateDashboard1(){
 
     updateDealerTable(data);
 
-    updateActiveFilterReport(data);
-
 }
 
 
 // ============================================================
-// DASHBOARD 1 KPI
+// KPI
 // ============================================================
 
 function updateD1KPI(data){
@@ -1719,11 +1223,6 @@ function updateD1KPI(data){
     let ret = 0;
 
 
-    const dealers =
-
-        new Set();
-
-
     data.forEach(row => {
 
         target += targetOf(row);
@@ -1732,180 +1231,187 @@ function updateD1KPI(data){
 
         ret += returnOf(row);
 
+    });
+
+
+    const net =
+        sale - ret;
+
+
+    document.getElementById(
+        "targetValue"
+    ).textContent =
+        money(target);
+
+
+    document.getElementById(
+        "saleValue"
+    ).textContent =
+        money(sale);
+
+
+    document.getElementById(
+        "returnValue"
+    ).textContent =
+        money(ret);
+
+
+    document.getElementById(
+        "netSaleValue"
+    ).textContent =
+        money(net);
+
+
+    document.getElementById(
+        "achievePercent"
+    ).textContent =
+        pct(
+            target
+            ? net / target * 100
+            : 0
+        );
+
+
+    document.getElementById(
+        "returnPercent"
+    ).textContent =
+        pct(
+            sale
+            ? ret / sale * 100
+            : 0
+        );
+
+}
+
+
+// ============================================================
+// DEALER STATUS
+// ============================================================
+
+function updateDealerStatus(data){
+
+    const dealers = {};
+
+
+    data.forEach(row => {
 
         const dealer =
-
             String(
-
                 row["DEALER NAME"] || ""
-
             ).trim();
 
 
-        if(dealer){
+        if(!dealer){
 
-            dealers.add(dealer);
+            return;
+
+        }
+
+
+        if(!dealers[dealer]){
+
+            dealers[dealer] = {
+
+                target:0,
+
+                sale:0,
+
+                return:0
+
+            };
+
+        }
+
+
+        dealers[dealer].target +=
+            targetOf(row);
+
+
+        dealers[dealer].sale +=
+            saleOf(row);
+
+
+        dealers[dealer].return +=
+            returnOf(row);
+
+    });
+
+
+    let targeted = 0;
+
+    let active = 0;
+
+    let newDealer = 0;
+
+    let nonActive = 0;
+
+
+    Object.values(dealers).forEach(d => {
+
+        const net =
+            d.sale - d.return;
+
+
+        if(d.target > 0){
+
+            targeted++;
+
+        }
+
+
+        if(net > 0){
+
+            active++;
+
+        }
+
+        else{
+
+            nonActive++;
+
+        }
+
+
+        if(
+            d.target === 0 &&
+            net > 0
+        ){
+
+            newDealer++;
 
         }
 
     });
 
 
-    const net =
+    document.getElementById(
+        "targetedDealer"
+    ).textContent =
+        numberFmt(targeted);
 
-        sale - ret;
 
+    document.getElementById(
+        "activeDealer"
+    ).textContent =
+        numberFmt(active);
 
-    const targetEl =
 
-        document.getElementById(
+    document.getElementById(
+        "newDealer"
+    ).textContent =
+        numberFmt(newDealer);
 
-            "targetValue"
 
-        );
-
-
-    const saleEl =
-
-        document.getElementById(
-
-            "saleValue"
-
-        );
-
-
-    const returnEl =
-
-        document.getElementById(
-
-            "returnValue"
-
-        );
-
-
-    const netEl =
-
-        document.getElementById(
-
-            "netSaleValue"
-
-        );
-
-
-    const achieveEl =
-
-        document.getElementById(
-
-            "achievePercent"
-
-        );
-
-
-    const returnPctEl =
-
-        document.getElementById(
-
-            "returnPercent"
-
-        );
-
-
-    const dealerEl =
-
-        document.getElementById(
-
-            "dealerCount"
-
-        );
-
-
-    if(targetEl){
-
-        targetEl.textContent =
-
-            money(target);
-
-    }
-
-
-    if(saleEl){
-
-        saleEl.textContent =
-
-            money(sale);
-
-    }
-
-
-    if(returnEl){
-
-        returnEl.textContent =
-
-            money(ret);
-
-    }
-
-
-    if(netEl){
-
-        netEl.textContent =
-
-            money(net);
-
-    }
-
-
-    if(achieveEl){
-
-        achieveEl.textContent =
-
-            pct(
-
-                target
-
-                    ? net / target * 100
-
-                    : 0
-
-            );
-
-    }
-
-
-    if(returnPctEl){
-
-        returnPctEl.textContent =
-
-            pct(
-
-                sale
-
-                    ? ret / sale * 100
-
-                    : 0
-
-            );
-
-    }
-
-
-    if(dealerEl){
-
-        dealerEl.textContent =
-
-            numberFmt(
-
-                dealers.size
-
-            );
-
-    }
+    document.getElementById(
+        "nonActiveDealer"
+    ).textContent =
+        numberFmt(nonActive);
 
 }
 
 
 // ============================================================
-// CHART DEFAULT OPTIONS
+// CHART OPTIONS
 // ============================================================
 
 function chartOptions(){
@@ -1915,14 +1421,6 @@ function chartOptions(){
         responsive:true,
 
         maintainAspectRatio:false,
-
-        interaction:{
-
-            mode:"index",
-
-            intersect:false
-
-        },
 
         plugins:{
 
@@ -1938,23 +1436,11 @@ function chartOptions(){
 
                 callbacks:{
 
-                    label:function(context){
-
-                        return (
-
-                            context.dataset.label +
-
-                            ": " +
-
-                            money(
-
-                                context.raw
-
-                            )
-
-                        );
-
-                    }
+                    label:
+                    context =>
+                    money(
+                        context.raw
+                    )
 
                 }
 
@@ -1970,11 +1456,9 @@ function chartOptions(){
 
                 ticks:{
 
-                    callback:function(value){
-
-                        return money(value);
-
-                    }
+                    callback:
+                    value =>
+                    money(value)
 
                 }
 
@@ -1988,25 +1472,18 @@ function chartOptions(){
 
 
 // ============================================================
-// CREATE / UPDATE CHART
+// CREATE CHART
 // ============================================================
 
 function makeChart(
-
     id,
-
     type,
-
     labels,
-
     datasets,
-
     options = {}
-
 ){
 
     const canvas =
-
         document.getElementById(id);
 
 
@@ -2025,7 +1502,6 @@ function makeChart(
 
 
     charts[id] =
-
         new Chart(
 
             canvas,
@@ -2058,126 +1534,85 @@ function makeChart(
 
 
 // ============================================================
-// GROUP DATA
+// GROUP
 // ============================================================
 
 function grouped(
-
     data,
-
     column
-
 ){
 
-    const result = {};
+    const map = {};
 
 
     data.forEach(row => {
 
         const key =
-
-            String(
-
-                row[column] || "Blank"
-
-            ).trim();
+            row[column] || "Blank";
 
 
-        if(!result[key]){
+        if(!map[key]){
 
-            result[key] = {
+            map[key] = {
 
                 target:0,
 
-                net:0,
-
-                sale:0,
-
-                ret:0
+                net:0
 
             };
 
         }
 
 
-        result[key].target +=
-
+        map[key].target +=
             targetOf(row);
 
 
-        result[key].net +=
-
+        map[key].net +=
             netOf(row);
-
-
-        result[key].sale +=
-
-            saleOf(row);
-
-
-        result[key].ret +=
-
-            returnOf(row);
 
     });
 
 
-    return result;
+    return map;
 
 }
 
 
 // ============================================================
-// BRAND WISE TARGET VS NET SALE
+// BRAND CHART
 // ============================================================
 
 function updateBrandChart(data){
 
-    const groups =
-
+    const group =
         grouped(
-
             data,
-
             "BRAND NAME"
-
         );
 
 
     const labels =
-
-        Object.keys(groups)
-
-            .sort(
-
-                (a,b) =>
-
-                groups[b].net -
-
-                groups[a].net
-
-            );
+        Object.keys(group)
+        .sort(
+            (a,b) =>
+            group[b].net -
+            group[a].net
+        );
 
 
     const inner =
-
         document.querySelector(
-
             ".brand-chart-inner"
-
         );
 
 
     if(inner){
 
         inner.style.minWidth =
-
             Math.max(
-
-                900,
-
-                labels.length * 90
-
+                650,
+                labels.length * 75
             ) + "px";
 
     }
@@ -2198,18 +1633,14 @@ function updateBrandChart(data){
                 label:"Target",
 
                 data:
-
                     labels.map(
-
                         x =>
-
-                        groups[x].target
-
+                        group[x].target
                     ),
 
                 borderWidth:1,
 
-                borderRadius:4
+                borderRadius:3
 
             },
 
@@ -2218,46 +1649,18 @@ function updateBrandChart(data){
                 label:"Net Sale",
 
                 data:
-
                     labels.map(
-
                         x =>
-
-                        groups[x].net
-
+                        group[x].net
                     ),
 
                 borderWidth:1,
 
-                borderRadius:4
+                borderRadius:3
 
             }
 
-        ],
-
-        {
-
-            scales:{
-
-                y:{
-
-                    beginAtZero:true,
-
-                    ticks:{
-
-                        callback:
-
-                            value =>
-
-                            money(value)
-
-                    }
-
-                }
-
-            }
-
-        }
+        ]
 
     );
 
@@ -2265,7 +1668,7 @@ function updateBrandChart(data){
 
 
 // ============================================================
-// MONTH ORDER
+// MONTH
 // ============================================================
 
 function monthOrder(){
@@ -2302,30 +1705,24 @@ function monthOrder(){
 
 
 // ============================================================
-// MONTH WISE TARGET VS NET SALE
+// MONTH CHART
 // ============================================================
 
 function updateMonthChart(data){
 
-    const groups = {};
+    const group = {};
 
 
     data.forEach(row => {
 
-        const month =
-
-            String(
-
-                row["MONTH"] ||
-
-                "Blank"
-
-            ).trim();
+        const key =
+            row["MONTH"] ||
+            "Blank";
 
 
-        if(!groups[month]){
+        if(!group[key]){
 
-            groups[month] = {
+            group[key] = {
 
                 target:0,
 
@@ -2336,13 +1733,11 @@ function updateMonthChart(data){
         }
 
 
-        groups[month].target +=
-
+        group[key].target +=
             targetOf(row);
 
 
-        groups[month].net +=
-
+        group[key].net +=
             netOf(row);
 
     });
@@ -2351,25 +1746,15 @@ function updateMonthChart(data){
     const labels = [
 
         ...monthOrder()
-
             .filter(
-
-                month =>
-
-                groups[month]
-
+                m => group[m]
             ),
 
-        ...Object.keys(groups)
-
+        ...Object.keys(group)
             .filter(
-
-                month =>
-
+                m =>
                 !monthOrder()
-
-                    .includes(month)
-
+                    .includes(m)
             )
 
     ];
@@ -2390,22 +1775,16 @@ function updateMonthChart(data){
                 label:"Net Sale",
 
                 data:
-
                     labels.map(
-
                         x =>
-
-                        groups[x].net
-
+                        group[x].net
                     ),
 
                 borderWidth:3,
 
                 tension:.3,
 
-                fill:false,
-
-                pointRadius:4
+                fill:false
 
             },
 
@@ -2414,52 +1793,25 @@ function updateMonthChart(data){
                 label:"Target",
 
                 data:
-
                     labels.map(
-
                         x =>
-
-                        groups[x].target
-
+                        group[x].target
                     ),
 
                 borderWidth:3,
 
-                borderDash:[8,5],
+                borderDash:[
+                    8,
+                    5
+                ],
 
                 tension:.3,
 
-                fill:false,
-
-                pointRadius:3
+                fill:false
 
             }
 
-        ],
-
-        {
-
-            scales:{
-
-                y:{
-
-                    beginAtZero:true,
-
-                    ticks:{
-
-                        callback:
-
-                            value =>
-
-                            money(value)
-
-                    }
-
-                }
-
-            }
-
-        }
+        ]
 
     );
 
@@ -2467,35 +1819,25 @@ function updateMonthChart(data){
 
 
 // ============================================================
-// AGENT WISE TARGET VS NET SALE
+// AGENT CHART
 // ============================================================
 
 function updateAgentChart(data){
 
-    const groups =
-
+    const group =
         grouped(
-
             data,
-
             "AGENT NAME"
-
         );
 
 
     const labels =
-
-        Object.keys(groups)
-
-            .sort(
-
-                (a,b) =>
-
-                groups[b].net -
-
-                groups[a].net
-
-            );
+        Object.keys(group)
+        .sort(
+            (a,b) =>
+            group[b].net -
+            group[a].net
+        );
 
 
     makeChart(
@@ -2513,18 +1855,14 @@ function updateAgentChart(data){
                 label:"Target",
 
                 data:
-
                     labels.map(
-
                         x =>
-
-                        groups[x].target
-
+                        group[x].target
                     ),
 
                 borderWidth:1,
 
-                borderRadius:4
+                borderRadius:3
 
             },
 
@@ -2533,46 +1871,18 @@ function updateAgentChart(data){
                 label:"Net Sale",
 
                 data:
-
                     labels.map(
-
                         x =>
-
-                        groups[x].net
-
+                        group[x].net
                     ),
 
                 borderWidth:1,
 
-                borderRadius:4
+                borderRadius:3
 
             }
 
-        ],
-
-        {
-
-            scales:{
-
-                y:{
-
-                    beginAtZero:true,
-
-                    ticks:{
-
-                        callback:
-
-                            value =>
-
-                            money(value)
-
-                    }
-
-                }
-
-            }
-
-        }
+        ]
 
     );
 
@@ -2580,39 +1890,50 @@ function updateAgentChart(data){
 
 
 // ============================================================
-// DEALER STATUS CALCULATION
+// DEALER TABLE - DATA
 // ============================================================
 
-function getDealerStatus(data){
+function getDealerTableData(rows){
 
-    const dealerMap = {};
+    const dealerColumn =
+        "DEALER NAME";
 
 
-    data.forEach(row => {
+    const groups = {};
+
+
+    rows.forEach(row => {
 
         const dealer =
-
             String(
-
-                row["DEALER NAME"] || ""
-
+                row[dealerColumn] || ""
             ).trim();
 
 
-        if(!dealer){
+        const fy =
+            String(
+                row["F YEAR"] || ""
+            ).trim();
+
+
+        if(!dealer || !fy){
 
             return;
 
         }
 
 
-        if(!dealerMap[dealer]){
+        const key =
+            dealer + "|" + fy;
 
-            dealerMap[dealer] = {
+
+        if(!groups[key]){
+
+            groups[key] = {
 
                 target:0,
 
-                sale:0,
+                qty:0,
 
                 net:0
 
@@ -2621,283 +1942,22 @@ function getDealerStatus(data){
         }
 
 
-        dealerMap[dealer].target +=
-
+        groups[key].target +=
             targetOf(row);
 
 
-        dealerMap[dealer].sale +=
+        groups[key].qty +=
+            qtySaleOf(row) -
+            qtyReturnOf(row);
 
-            saleOf(row);
 
-
-        dealerMap[dealer].net +=
-
+        groups[key].net +=
             netOf(row);
 
     });
 
 
-    let targeted = 0;
-
-    let active = 0;
-
-    let newDealer = 0;
-
-    let nonActive = 0;
-
-
-    Object.values(
-
-        dealerMap
-
-    ).forEach(dealer => {
-
-        const hasTarget =
-
-            dealer.target > 0;
-
-
-        const hasSale =
-
-            dealer.sale > 0;
-
-
-        if(hasTarget){
-
-            targeted++;
-
-        }
-
-
-        if(hasSale){
-
-            active++;
-
-        }
-
-
-        if(
-
-            !hasTarget &&
-
-            hasSale
-
-        ){
-
-            newDealer++;
-
-        }
-
-
-        if(
-
-            hasTarget &&
-
-            !hasSale
-
-        ){
-
-            nonActive++;
-
-        }
-
-    });
-
-
-    return {
-
-        targeted,
-
-        active,
-
-        newDealer,
-
-        nonActive,
-
-        dealerMap
-
-    };
-
-}
-
-
-// ============================================================
-// UPDATE DEALER STATUS BOXES
-// ============================================================
-
-function updateDealerStatus(data){
-
-    const status =
-
-        getDealerStatus(data);
-
-
-    const ids = {
-
-        targeted:
-
-            "targetedDealerCount",
-
-        active:
-
-            "activeDealerCount",
-
-        newDealer:
-
-            "newDealerCount",
-
-        nonActive:
-
-            "nonActiveDealerCount"
-
-    };
-
-
-    Object.entries(ids)
-
-        .forEach(
-
-            ([key,id]) => {
-
-                const element =
-
-                    document.getElementById(
-
-                        id
-
-                    );
-
-
-                if(element){
-
-                    element.textContent =
-
-                        numberFmt(
-
-                            status[key]
-
-                        );
-
-                }
-
-            }
-
-        );
-
-}
-
-
-// ============================================================
-// ACTIVE FILTER REPORT TEXT
-// ============================================================
-
-function getActiveFilterText(){
-
-    const active = [];
-
-
-    Object.entries(
-
-        d1FilterDefs
-
-    ).forEach(
-
-        ([id,[column,label]]) => {
-
-            const selected =
-
-                d1Selected[id];
-
-
-            if(
-
-                selected &&
-
-                selected.size > 0
-
-            ){
-
-                active.push(
-
-                    label +
-
-                    ": " +
-
-                    [...selected]
-
-                        .map(
-
-                            escapeHtml
-
-                        )
-
-                        .join(", ")
-
-                );
-
-            }
-
-        }
-
-    );
-
-
-    if(!active.length){
-
-        return "All Data";
-
-    }
-
-
-    return active.join("  |  ");
-
-}
-
-
-// ============================================================
-// UPDATE ACTIVE FILTER REPORT
-// ============================================================
-
-function updateActiveFilterReport(data){
-
-    const report =
-
-        document.getElementById(
-
-            "activeFilterReport"
-
-        );
-
-
-    if(!report){
-
-        return;
-
-    }
-
-
-    report.innerHTML = `
-
-        <span class="report-label">
-
-            Report:
-
-        </span>
-
-        <span>
-
-            ${getActiveFilterText()}
-
-        </span>
-
-        <span class="report-count">
-
-            • ${numberFmt(data.length)} Rows
-
-        </span>
-
-    `;
+    return groups;
 
 }
 
@@ -2906,14 +1966,11 @@ function updateActiveFilterReport(data){
 // DEALER TABLE
 // ============================================================
 
-function updateDealerTable(data){
+function updateDealerTable(rows){
 
     const table =
-
         document.getElementById(
-
-            "dealerReportTable"
-
+            "dealer-dashboard-table"
         );
 
 
@@ -2924,461 +1981,553 @@ function updateDealerTable(data){
     }
 
 
-    const status =
+    const groups =
+        getDealerTableData(rows);
 
-        getDealerStatus(data);
+
+    let years = [
+
+        ...new Set(
+
+            rows
+
+            .map(
+                r =>
+                String(
+                    r["F YEAR"] || ""
+                ).trim()
+            )
+
+            .filter(Boolean)
+
+        )
+
+    ];
 
 
-    const dealerMap =
+    years.sort(
+        (a,b) =>
+        String(b).localeCompare(
+            String(a),
+            undefined,
+            {
+                numeric:true
+            }
+        )
+    );
 
-        status.dealerMap;
+
+    years =
+        years.slice(0,3);
+
+
+    const dealerSet =
+        new Set();
+
+
+    rows.forEach(row => {
+
+        const dealer =
+            String(
+                row["DEALER NAME"] || ""
+            ).trim();
+
+
+        if(dealer){
+
+            dealerSet.add(dealer);
+
+        }
+
+    });
 
 
     let dealers =
-
-        Object.keys(
-
-            dealerMap
-
-        );
+        [...dealerSet];
 
 
-    // --------------------------------------------------------
-    // SORT
-    // --------------------------------------------------------
+    // ========================================================
+    // SORT DEALERS
+    // ========================================================
 
     dealers.sort(
-
-        (a,b) => {
-
-            if(
-
-                dealerSortColumn ===
-
-                "dealer"
-
-            ){
-
-                const result =
-
-                    a.localeCompare(
-
-                        b,
-
-                        undefined,
-
-                        {
-
-                            numeric:true,
-
-                            sensitivity:"base"
-
-                        }
-
-                    );
-
-
-                return dealerSortDirection ===
-
-                    "asc"
-
-                    ? result
-
-                    : -result;
-
-            }
-
-
-            const av =
-
-                Number(
-
-                    dealerMap[a][
-
-                        dealerSortColumn
-
-                    ] || 0
-
-                );
-
-
-            const bv =
-
-                Number(
-
-                    dealerMap[b][
-
-                        dealerSortColumn
-
-                    ] || 0
-
-                );
-
-
-            return dealerSortDirection ===
-
-                "asc"
-
-                ? av - bv
-
-                : bv - av;
-
-        }
-
+        (a,b) =>
+        compareDealerRows(
+            a,
+            b,
+            groups,
+            years
+        )
     );
 
 
-    // --------------------------------------------------------
-    // TOTALS
-    // --------------------------------------------------------
-
-    let totalTarget = 0;
-
-    let totalSale = 0;
-
-    let totalNet = 0;
-
-
-    dealers.forEach(
-
-        dealer => {
-
-            totalTarget +=
-
-                dealerMap[dealer].target;
-
-            totalSale +=
-
-                dealerMap[dealer].sale;
-
-            totalNet +=
-
-                dealerMap[dealer].net;
-
-        }
-
-    );
-
-
-    // --------------------------------------------------------
+    // ========================================================
     // HEADER
-    // --------------------------------------------------------
+    // ========================================================
 
     let html = `
 
-        <thead>
+    <thead>
 
-            <tr>
+        <tr>
 
-                <th>
+            <th
+                rowspan="2"
+                onclick="sortDealerTable('dealer')"
+            >
 
-                    <button
+                DEALER NAME
 
-                        class="table-sort-btn"
+                ${sortIcon("dealer")}
 
-                        onclick="sortDealerTable('dealer')"
-
-                        type="button"
-
-                    >
-
-                        S.No / Dealer Name
-
-                        ${sortArrow('dealer')}
-
-                    </button>
-
-                </th>
-
-
-                <th>
-
-                    <button
-
-                        class="table-sort-btn"
-
-                        onclick="sortDealerTable('target')"
-
-                        type="button"
-
-                    >
-
-                        TARGET
-
-                        ${sortArrow('target')}
-
-                    </button>
-
-                </th>
-
-
-                <th>
-
-                    <button
-
-                        class="table-sort-btn"
-
-                        onclick="sortDealerTable('sale')"
-
-                        type="button"
-
-                    >
-
-                        SALE
-
-                        ${sortArrow('sale')}
-
-                    </button>
-
-                </th>
-
-
-                <th>
-
-                    <button
-
-                        class="table-sort-btn"
-
-                        onclick="sortDealerTable('net')"
-
-                        type="button"
-
-                    >
-
-                        NET SALE
-
-                        ${sortArrow('net')}
-
-                    </button>
-
-                </th>
-
-
-                <th>
-
-                    ACHIEVE %
-
-                </th>
-
-
-                <th>
-
-                    STATUS
-
-                </th>
-
-            </tr>
-
-        </thead>
-
-        <tbody>
+            </th>
 
     `;
 
 
-    // --------------------------------------------------------
+    years.forEach(year => {
+
+        html += `
+
+            <th colspan="4">
+
+                ${escapeHtml(year)}
+
+            </th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th colspan="2">
+
+                GROWTH %
+
+            </th>
+
+        </tr>
+
+        <tr>
+
+    `;
+
+
+    years.forEach(year => {
+
+        html += `
+
+            <th
+                onclick="sortDealerTable('${year}-target')"
+            >
+                TARGET
+                ${sortIcon(year+"-target")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('${year}-qty')"
+            >
+                NET QTY
+                ${sortIcon(year+"-qty")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('${year}-net')"
+            >
+                NET VALUE
+                ${sortIcon(year+"-net")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('${year}-achieve')"
+            >
+                ACHIEVE %
+                ${sortIcon(year+"-achieve")}
+            </th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th
+                onclick="sortDealerTable('growth1')"
+            >
+                CY vs PY
+                ${sortIcon("growth1")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('growth2')"
+            >
+                PY vs 2Y AGO
+                ${sortIcon("growth2")}
+            </th>
+
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+    `;
+
+
+    // ========================================================
     // ROWS
-    // --------------------------------------------------------
+    // ========================================================
 
-    dealers.forEach(
+    dealers.forEach(dealer => {
 
-        (dealer,index) => {
+        const values =
+            years.map(
+                year =>
+                groups[
+                    dealer +
+                    "|" +
+                    year
+                ] || {
 
-            const item =
+                    target:0,
 
-                dealerMap[dealer];
+                    qty:0,
 
+                    net:0
 
-            const achieve =
-
-                item.target
-
-                    ? item.net /
-
-                      item.target *
-
-                      100
-
-                    : 0;
-
-
-            let statusText =
-
-                "";
+                }
+            );
 
 
-            if(
+        html += `
 
-                item.target > 0 &&
+        <tr>
 
-                item.sale > 0
+            <td>
 
-            ){
+                ${escapeHtml(dealer)}
 
-                statusText =
+            </td>
 
-                    "Active Dealer";
+        `;
 
-            }
 
-            else if(
+        values.forEach(value => {
 
-                item.target === 0 &&
-
-                item.sale > 0
-
-            ){
-
-                statusText =
-
-                    "New Dealer";
-
-            }
-
-            else if(
-
-                item.target > 0 &&
-
-                item.sale === 0
-
-            ){
-
-                statusText =
-
-                    "Non Active Dealer";
-
-            }
-
-            else{
-
-                statusText =
-
-                    "No Activity";
-
-            }
+            const achievement =
+                value.target
+                ? value.net /
+                    value.target *
+                    100
+                : 0;
 
 
             html += `
 
-                <tr>
+                <td>
+                    ${money(value.target)}
+                </td>
 
-                    <td>
+                <td>
+                    ${numberFmt(value.qty)}
+                </td>
 
-                        <strong>
+                <td>
+                    ${money(value.net)}
+                </td>
 
-                            ${index + 1}.
-
-                        </strong>
-
-                        ${escapeHtml(dealer)}
-
-                    </td>
-
-
-                    <td>
-
-                        ${money(item.target)}
-
-                    </td>
-
-
-                    <td>
-
-                        ${money(item.sale)}
-
-                    </td>
-
-
-                    <td>
-
-                        ${money(item.net)}
-
-                    </td>
-
-
-                    <td>
-
-                        ${pct(achieve)}
-
-                    </td>
-
-
-                    <td>
-
-                        ${escapeHtml(statusText)}
-
-                    </td>
-
-                </tr>
+                <td>
+                    ${pct(achievement)}
+                </td>
 
             `;
 
-        }
-
-    );
+        });
 
 
-    // --------------------------------------------------------
+        const g1 =
+            values.length > 1 &&
+            values[1].net !== 0
+
+            ?
+
+            (
+                (
+                    values[0].net -
+                    values[1].net
+                )
+                /
+                Math.abs(
+                    values[1].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        const g2 =
+            values.length > 2 &&
+            values[2].net !== 0
+
+            ?
+
+            (
+                (
+                    values[1].net -
+                    values[2].net
+                )
+                /
+                Math.abs(
+                    values[2].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        html += `
+
+            <td
+                class="${
+                    g1 == null
+                    ? ""
+                    : g1 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g1 == null
+                    ? "—"
+                    : pct(g1) +
+                      (
+                        g1 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+
+            <td
+                class="${
+                    g2 == null
+                    ? ""
+                    : g2 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g2 == null
+                    ? "—"
+                    : pct(g2) +
+                      (
+                        g2 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
+
+    // ========================================================
     // TOTAL ROW
-    // --------------------------------------------------------
+    // ========================================================
 
-    const totalAchieve =
+    const totals =
+        years.map(
+            year => {
 
-        totalTarget
+                let target = 0;
 
-            ? totalNet /
+                let qty = 0;
 
-              totalTarget *
+                let net = 0;
 
-              100
 
-            : 0;
+                rows.forEach(row => {
+
+                    if(
+                        String(
+                            row["F YEAR"] || ""
+                        ).trim() === year
+                    ){
+
+                        target +=
+                            targetOf(row);
+
+                        qty +=
+                            qtySaleOf(row) -
+                            qtyReturnOf(row);
+
+                        net +=
+                            netOf(row);
+
+                    }
+
+                });
+
+
+                return {
+
+                    target,
+
+                    qty,
+
+                    net
+
+                };
+
+            }
+        );
 
 
     html += `
 
         <tr class="total-row">
 
-            <td>
+            <td>TOTAL</td>
 
-                TOTAL
+    `;
+
+
+    totals.forEach(value => {
+
+        html += `
+
+            <td>
+                ${money(value.target)}
+            </td>
+
+            <td>
+                ${numberFmt(value.qty)}
+            </td>
+
+            <td>
+                ${money(value.net)}
+            </td>
+
+            <td>
+                ${
+                    pct(
+                        value.target
+                        ? value.net /
+                          value.target *
+                          100
+                        : 0
+                    )
+                }
+            </td>
+
+        `;
+
+    });
+
+
+    const totalG1 =
+        totals.length > 1 &&
+        totals[1].net !== 0
+
+        ?
+
+        (
+            (
+                totals[0].net -
+                totals[1].net
+            )
+            /
+            Math.abs(
+                totals[1].net
+            )
+        ) * 100
+
+        :
+
+        null;
+
+
+    const totalG2 =
+        totals.length > 2 &&
+        totals[2].net !== 0
+
+        ?
+
+        (
+            (
+                totals[1].net -
+                totals[2].net
+            )
+            /
+            Math.abs(
+                totals[2].net
+            )
+        ) * 100
+
+        :
+
+        null;
+
+
+    html += `
+
+            <td
+                class="${
+                    totalG1 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    totalG1 == null
+                    ? "—"
+                    : pct(totalG1) +
+                      (
+                        totalG1 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
 
             </td>
 
 
-            <td>
+            <td
+                class="${
+                    totalG2 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
 
-                ${money(totalTarget)}
-
-            </td>
-
-
-            <td>
-
-                ${money(totalSale)}
-
-            </td>
-
-
-            <td>
-
-                ${money(totalNet)}
-
-            </td>
-
-
-            <td>
-
-                ${pct(totalAchieve)}
-
-            </td>
-
-
-            <td>
-
-                ${numberFmt(dealers.length)}
-
-                Dealers
+                ${
+                    totalG2 == null
+                    ? "—"
+                    : pct(totalG2) +
+                      (
+                        totalG2 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
 
             </td>
 
@@ -3387,70 +2536,258 @@ function updateDealerTable(data){
     `;
 
 
-    html += `
-
-        </tbody>
-
-    `;
-
-
-    table.innerHTML = html;
-
-
-    updateDealerTableSortStatus();
+    table.innerHTML =
+        html +
+        "</tbody>";
 
 }
 
 
 // ============================================================
-// SORT ARROW
+// SORT ICON
 // ============================================================
 
-function sortArrow(column){
+function sortIcon(column){
 
     if(
-
         dealerSortColumn !== column
-
     ){
 
-        return "↕";
+        return `<span class="sort-icon">↕</span>`;
 
     }
 
 
-    return dealerSortDirection ===
+    return `
 
-        "asc"
+        <span class="sort-icon sort-active">
 
-        ? "↑"
+            ${
+                dealerSortDirection === "asc"
+                ? "↑"
+                : "↓"
+            }
 
-        : "↓";
+        </span>
+
+    `;
 
 }
 
 
 // ============================================================
-// SORT DEALER TABLE
+// GET SORT VALUE
+// ============================================================
+
+function getDealerSortValue(
+    dealer,
+    column,
+    groups,
+    years
+){
+
+    if(column === "dealer"){
+
+        return dealer.toUpperCase();
+
+    }
+
+
+    if(
+        column === "growth1" ||
+        column === "growth2"
+    ){
+
+        const values =
+            years.map(
+                year =>
+                groups[
+                    dealer +
+                    "|" +
+                    year
+                ] || {
+
+                    target:0,
+                    qty:0,
+                    net:0
+
+                }
+            );
+
+
+        if(
+            column === "growth1"
+        ){
+
+            if(
+                values.length < 2 ||
+                values[1].net === 0
+            ){
+
+                return 0;
+
+            }
+
+
+            return (
+                (
+                    values[0].net -
+                    values[1].net
+                )
+                /
+                Math.abs(
+                    values[1].net
+                )
+            ) * 100;
+
+        }
+
+
+        if(
+            values.length < 3 ||
+            values[2].net === 0
+        ){
+
+            return 0;
+
+        }
+
+
+        return (
+            (
+                values[1].net -
+                values[2].net
+            )
+            /
+            Math.abs(
+                values[2].net
+            )
+        ) * 100;
+
+    }
+
+
+    const parts =
+        column.split("-");
+
+
+    const year =
+        parts[0];
+
+
+    const metric =
+        parts[1];
+
+
+    const value =
+        groups[
+            dealer +
+            "|" +
+            year
+        ] || {
+
+            target:0,
+
+            qty:0,
+
+            net:0
+
+        };
+
+
+    if(metric === "achieve"){
+
+        return value.target
+            ? value.net /
+              value.target *
+              100
+            : 0;
+
+    }
+
+
+    return value[metric] || 0;
+
+}
+
+
+// ============================================================
+// COMPARE
+// ============================================================
+
+function compareDealerRows(
+    a,
+    b,
+    groups,
+    years
+){
+
+    const av =
+        getDealerSortValue(
+            a,
+            dealerSortColumn,
+            groups,
+            years
+        );
+
+
+    const bv =
+        getDealerSortValue(
+            b,
+            dealerSortColumn,
+            groups,
+            years
+        );
+
+
+    let result;
+
+
+    if(
+        typeof av === "string"
+    ){
+
+        result =
+            av.localeCompare(
+                bv,
+                undefined,
+                {
+                    numeric:true
+                }
+            );
+
+    }
+
+    else{
+
+        result =
+            Number(av) -
+            Number(bv);
+
+    }
+
+
+    return dealerSortDirection === "asc"
+        ? result
+        : -result;
+
+}
+
+
+// ============================================================
+// SORT TABLE
 // ============================================================
 
 function sortDealerTable(column){
 
     if(
-
         dealerSortColumn === column
-
     ){
 
         dealerSortDirection =
-
-            dealerSortDirection ===
-
-            "asc"
-
-                ? "desc"
-
-                : "asc";
+            dealerSortDirection === "asc"
+            ? "desc"
+            : "asc";
 
     }
 
@@ -3458,1032 +2795,1098 @@ function sortDealerTable(column){
 
         dealerSortColumn = column;
 
-        dealerSortDirection =
-
-            "asc";
+        dealerSortDirection = "asc";
 
     }
 
 
     updateDealerTable(
-
         getD1Data()
-
     );
 
 }
 
 
 // ============================================================
-// SORT STATUS
+// RESET FILTERS
 // ============================================================
 
-function updateDealerTableSortStatus(){
+function resetFilters(){
 
-    const status =
+    Object.keys(
+        d1Selected
+    ).forEach(
+        key =>
+        d1Selected[key].clear()
+    );
 
-        document.getElementById(
 
-            "dealerSortStatus"
-
+    document
+        .querySelectorAll(
+            "#dashboard1 .filter-option input[type=checkbox]"
+        )
+        .forEach(
+            checkbox =>
+            checkbox.checked = false
         );
 
 
-    if(!status){
+    document
+        .querySelectorAll(
+            "#dashboard1 .select-all"
+        )
+        .forEach(
+            checkbox =>
+            checkbox.checked = true
+        );
 
-        return;
+
+    Object.entries(
+        d1FilterDefs
+    ).forEach(
+        ([id,[column,label]]) =>
+        updateD1Button(
+            id,
+            label
+        )
+    );
+
+
+    document
+        .querySelectorAll(
+            "#dashboard1 .filter-search"
+        )
+        .forEach(
+            input =>
+            input.value = ""
+        );
+
+
+    updateDashboard1();
+
+}
+
+
+// ============================================================
+// DASHBOARD 2
+// ============================================================
+
+let d2Data = [];
+
+let d2Headers = [];
+
+
+let d2Selected = {
+
+    fy:new Set(),
+
+    type:new Set(),
+
+    brand:new Set(),
+
+    dealer:new Set()
+
+};
+
+
+// ============================================================
+// DASHBOARD SWITCH
+// ============================================================
+
+function showDashboard(n){
+
+    document.getElementById(
+        "dashboard1"
+    ).style.display =
+        n === 1
+        ? "block"
+        : "none";
+
+
+    document.getElementById(
+        "dashboard2"
+    ).style.display =
+        n === 2
+        ? "block"
+        : "none";
+
+
+    document
+        .querySelectorAll(
+            ".dash-tab"
+        )
+        .forEach(
+            (button,index) =>
+            button.classList.toggle(
+                "active",
+                index === n - 1
+            )
+        );
+
+
+    if(
+        n === 2 &&
+        !d2Data.length
+    ){
+
+        loadDashboard2();
+
+    }
+
+}
+
+
+// ============================================================
+// MULTI TOGGLE
+// ============================================================
+
+function toggleMulti(id){
+
+    const target =
+        document.getElementById(id);
+
+
+    document
+        .querySelectorAll(
+            ".multi-select"
+        )
+        .forEach(
+            box => {
+
+                if(box !== target){
+
+                    box.classList.remove(
+                        "open"
+                    );
+
+                }
+
+            }
+        );
+
+
+    target.classList.toggle(
+        "open"
+    );
+
+}
+
+
+document.addEventListener(
+    "click",
+    function(event){
+
+        if(
+            !event.target.closest(
+                ".multi-select"
+            )
+        ){
+
+            document
+                .querySelectorAll(
+                    ".multi-select"
+                )
+                .forEach(
+                    box =>
+                    box.classList.remove(
+                        "open"
+                    )
+                );
+
+        }
+
+    }
+);
+
+
+// ============================================================
+// FIND COLUMN
+// ============================================================
+
+function d2FindColumn(names){
+
+    const headers =
+        d2Headers.map(
+            h =>
+            norm(h)
+            .replace(
+                /[^A-Z0-9]/g,
+                ""
+            )
+        );
+
+
+    for(
+        const name of names
+    ){
+
+        const index =
+            headers.indexOf(
+                norm(name)
+                .replace(
+                    /[^A-Z0-9]/g,
+                    ""
+                )
+            );
+
+
+        if(index >= 0){
+
+            return d2Headers[index];
+
+        }
 
     }
 
 
-    const names = {
+    return "";
 
-        dealer:
+}
 
-            "Dealer Name",
 
-        target:
+// ============================================================
+// DATE
+// ============================================================
 
-            "Target",
+function d2Date(value){
 
-        sale:
+    if(!value){
 
-            "Sale",
+        return null;
 
-        net:
+    }
 
-            "Net Sale"
+
+    const s =
+        String(value).trim();
+
+
+    const match =
+        s.match(
+            /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/
+        );
+
+
+    const date =
+        match
+
+        ?
+
+        new Date(
+            +match[3],
+            +match[2] - 1,
+            +match[1]
+        )
+
+        :
+
+        new Date(s);
+
+
+    return isNaN(date)
+        ? null
+        : date;
+
+}
+
+
+// ============================================================
+// FY
+// ============================================================
+
+function d2FY(row){
+
+    const column =
+        d2FindColumn(
+            [
+                "F YEAR",
+                "FY",
+                "Financial Year"
+            ]
+        );
+
+
+    if(
+        column &&
+        row[column]
+    ){
+
+        return String(
+            row[column]
+        ).trim();
+
+    }
+
+
+    const dateColumn =
+        d2FindColumn(
+            [
+                "DATE",
+                "Invoice Date",
+                "Sales Date"
+            ]
+        );
+
+
+    const date =
+        d2Date(
+            row[dateColumn]
+        );
+
+
+    if(!date){
+
+        return "";
+
+    }
+
+
+    const year =
+        date.getFullYear();
+
+
+    const month =
+        date.getMonth() + 1;
+
+
+    return month >= 4
+
+        ?
+
+        year +
+        "-" +
+        String(
+            year + 1
+        ).slice(-2)
+
+        :
+
+        (
+            year - 1
+        ) +
+        "-" +
+        String(year).slice(-2);
+
+}
+
+
+// ============================================================
+// D2 VALUES
+// ============================================================
+
+function d2Values(type){
+
+    if(type === "fy"){
+
+        return [
+
+            ...new Set(
+                d2Data
+                .map(d2FY)
+                .filter(Boolean)
+            )
+
+        ].sort().reverse();
+
+    }
+
+
+    const map = {
+
+        type:[
+            "TYPE"
+        ],
+
+        brand:[
+            "BRAND NAME",
+            "BRAND"
+        ],
+
+        dealer:[
+            "DEALER NAME",
+            "DEALER"
+        ]
 
     };
 
 
-    status.textContent =
-
-        "Sorted by " +
-
-        names[dealerSortColumn] +
-
-        " " +
-
-        (
-
-            dealerSortDirection ===
-
-            "asc"
-
-                ? "Ascending ↑"
-
-                : "Descending ↓"
-
+    const column =
+        d2FindColumn(
+            map[type]
         );
+
+
+    return column
+
+        ?
+
+        [
+
+            ...new Set(
+
+                d2Data
+
+                .map(
+                    row =>
+                    String(
+                        row[column] || ""
+                    ).trim()
+                )
+
+                .filter(Boolean)
+
+            )
+
+        ].sort()
+
+        :
+
+        [];
 
 }
 
 
 // ============================================================
-// EXPORT CSV / EXCEL
+// D2 MULTI SELECT
 // ============================================================
 
-function exportDealerCSV(){
+function d2SetupMulti(
+    type,
+    id
+){
 
-    const rows =
+    const root =
+        document.getElementById(id);
 
-        getD1Data();
 
-
-    const status =
-
-        getDealerStatus(rows);
-
-
-    const map =
-
-        status.dealerMap;
-
-
-    let dealers =
-
-        Object.keys(map);
-
-
-    dealers.sort(
-
-        (a,b) =>
-
-        a.localeCompare(
-
-            b,
-
-            undefined,
-
-            {
-
-                numeric:true,
-
-                sensitivity:"base"
-
-            }
-
-        )
-
-    );
-
-
-    const csvRows = [];
-
-
-    csvRows.push([
-
-        "S.No",
-
-        "Dealer Name",
-
-        "Target",
-
-        "Sale",
-
-        "Net Sale",
-
-        "Achieve %",
-
-        "Status"
-
-    ]);
-
-
-    dealers.forEach(
-
-        (dealer,index) => {
-
-            const d =
-
-                map[dealer];
-
-
-            const achieve =
-
-                d.target
-
-                    ? d.net /
-
-                      d.target *
-
-                      100
-
-                    : 0;
-
-
-            let dealerStatus =
-
-                "";
-
-
-            if(
-
-                d.target > 0 &&
-
-                d.sale > 0
-
-            ){
-
-                dealerStatus =
-
-                    "Active Dealer";
-
-            }
-
-            else if(
-
-                d.target === 0 &&
-
-                d.sale > 0
-
-            ){
-
-                dealerStatus =
-
-                    "New Dealer";
-
-            }
-
-            else if(
-
-                d.target > 0 &&
-
-                d.sale === 0
-
-            ){
-
-                dealerStatus =
-
-                    "Non Active Dealer";
-
-            }
-
-
-            csvRows.push([
-
-                index + 1,
-
-                dealer,
-
-                d.target,
-
-                d.sale,
-
-                d.net,
-
-                achieve.toFixed(2) + "%",
-
-                dealerStatus
-
-            ]);
-
-        }
-
-    );
-
-
-    const csv =
-
-        csvRows.map(
-
-            row =>
-
-            row.map(
-
-                cell =>
-
-                    '"' +
-
-                    String(cell)
-
-                        .replace(
-
-                            /"/g,
-
-                            '""'
-
-                        ) +
-
-                    '"'
-
-            ).join(",")
-
-        ).join("\n");
-
-
-    const blob =
-
-        new Blob(
-
-            [csv],
-
-            {
-
-                type:
-
-                "text/csv;charset=utf-8;"
-
-            }
-
+    const menu =
+        root.querySelector(
+            ".multi-menu"
         );
 
 
-    const url =
-
-        URL.createObjectURL(blob);
-
-
-    const a =
-
-        document.createElement("a");
+    const button =
+        root.querySelector(
+            "button"
+        );
 
 
-    a.href = url;
+    menu.innerHTML = "";
 
 
-    a.download =
-
-        "S_Square_Dealer_Report.csv";
-
-
-    document.body.appendChild(a);
+    const search =
+        document.createElement(
+            "input"
+        );
 
 
-    a.click();
+    search.className =
+        "multi-search";
 
 
-    a.remove();
+    search.placeholder =
+        "🔍 Search...";
 
 
-    URL.revokeObjectURL(url);
-
-}
-
-
-// ============================================================
-// EXPORT EXCEL
-// ============================================================
-
-function exportDealerExcel(){
-
-    const rows =
-
-        getD1Data();
-
-
-    const status =
-
-        getDealerStatus(rows);
-
-
-    const map =
-
-        status.dealerMap;
-
-
-    let dealers =
-
-        Object.keys(map);
-
-
-    dealers.sort(
-
-        (a,b) =>
-
-        a.localeCompare(
-
-            b,
-
-            undefined,
-
-            {
-
-                numeric:true,
-
-                sensitivity:"base"
-
-            }
-
-        )
-
+    menu.appendChild(
+        search
     );
 
 
-    let html = `
+    const all =
+        document.createElement(
+            "label"
+        );
 
-        <table border="1">
 
-            <tr>
+    all.className =
+        "multi-all";
 
-                <th>S.No</th>
 
-                <th>Dealer Name</th>
+    all.innerHTML = `
 
-                <th>Target</th>
+        <input
+            type="checkbox"
+            checked
+        >
 
-                <th>Sale</th>
-
-                <th>Net Sale</th>
-
-                <th>Achieve %</th>
-
-                <th>Status</th>
-
-            </tr>
+        All
 
     `;
 
 
-    dealers.forEach(
-
-        (dealer,index) => {
-
-            const d =
-
-                map[dealer];
+    menu.appendChild(all);
 
 
-            const achieve =
-
-                d.target
-
-                    ? d.net /
-
-                      d.target *
-
-                      100
-
-                    : 0;
+    const list =
+        document.createElement(
+            "div"
+        );
 
 
-            let dealerStatus =
-
-                "";
+    menu.appendChild(list);
 
 
-            if(
+    d2Values(type)
+        .forEach(value => {
 
-                d.target > 0 &&
-
-                d.sale > 0
-
-            ){
-
-                dealerStatus =
-
-                    "Active Dealer";
-
-            }
-
-            else if(
-
-                d.target === 0 &&
-
-                d.sale > 0
-
-            ){
-
-                dealerStatus =
-
-                    "New Dealer";
-
-            }
-
-            else if(
-
-                d.target > 0 &&
-
-                d.sale === 0
-
-            ){
-
-                dealerStatus =
-
-                    "Non Active Dealer";
-
-            }
+            const label =
+                document.createElement(
+                    "label"
+                );
 
 
-            html += `
+            label.innerHTML = `
 
-                <tr>
+                <input
+                    type="checkbox"
+                    value="${escapeHtml(value)}"
+                >
 
-                    <td>${index + 1}</td>
-
-                    <td>${escapeHtml(dealer)}</td>
-
-                    <td>${d.target}</td>
-
-                    <td>${d.sale}</td>
-
-                    <td>${d.net}</td>
-
-                    <td>${achieve.toFixed(2)}%</td>
-
-                    <td>${dealerStatus}</td>
-
-                </tr>
+                ${escapeHtml(value)}
 
             `;
 
-        }
 
-    );
+            list.appendChild(
+                label
+            );
+
+        });
 
 
-    html += "</table>";
+    const allCheckbox =
+        all.querySelector(
+            "input"
+        );
 
 
-    const blob =
+    allCheckbox.onchange =
+        function(){
 
-        new Blob(
+            if(this.checked){
 
-            [
+                d2Selected[type]
+                    .clear();
 
-                "\ufeff" +
 
-                html
+                list
+                    .querySelectorAll(
+                        "input"
+                    )
+                    .forEach(
+                        x =>
+                        x.checked = false
+                    );
 
-            ],
 
-            {
-
-                type:
-
-                "application/vnd.ms-excel"
+                button.textContent =
+                    "All " +
+                    type.toUpperCase() +
+                    " ▾";
 
             }
 
+            else{
+
+                list
+                    .querySelectorAll(
+                        "input"
+                    )
+                    .forEach(
+                        x =>
+                        x.checked = true
+                    );
+
+
+                d2Values(type)
+                    .forEach(
+                        value =>
+                        d2Selected[type]
+                            .add(value)
+                    );
+
+
+                button.textContent =
+                    d2Selected[type].size +
+                    " Selected ▾";
+
+            }
+
+
+            d2Update();
+
+        };
+
+
+    list
+        .querySelectorAll(
+            "input"
+        )
+        .forEach(
+            checkbox => {
+
+                checkbox.onchange =
+                    function(){
+
+                        if(this.checked){
+
+                            d2Selected[type]
+                                .add(
+                                    this.value
+                                );
+
+                        }
+
+                        else{
+
+                            d2Selected[type]
+                                .delete(
+                                    this.value
+                                );
+
+                        }
+
+
+                        allCheckbox.checked =
+                            d2Selected[type].size === 0;
+
+
+                        button.textContent =
+                            d2Selected[type].size
+
+                            ?
+
+                            d2Selected[type].size +
+                            " Selected ▾"
+
+                            :
+
+                            "All " +
+                            type.toUpperCase() +
+                            " ▾";
+
+
+                        d2Update();
+
+                    };
+
+            }
         );
 
 
-    const url =
-
-        URL.createObjectURL(blob);
-
-
-    const a =
-
-        document.createElement("a");
-
-
-    a.href = url;
-
-
-    a.download =
-
-        "S_Square_Dealer_Report.xls";
-
-
-    document.body.appendChild(a);
-
-
-    a.click();
-
-
-    a.remove();
-
-
-    URL.revokeObjectURL(url);
-
-}
-
-
-// ============================================================
-// PRINT / PDF EXPORT
-// ============================================================
-
-function exportDealerPDF(){
-
-    const table =
-
-        document.getElementById(
-
-            "dealerReportTable"
-
-        );
-
-
-    if(!table){
-
-        alert(
-
-            "Dealer table nahi mila."
-
-        );
-
-        return;
-
-    }
-
-
-    const reportText =
-
-        getActiveFilterText();
-
-
-    const printWindow =
-
-        window.open(
-
-            "",
-
-            "_blank"
-
-        );
-
-
-    if(!printWindow){
-
-        alert(
-
-            "Popup blocked hai. Browser mein popup allow karein."
-
-        );
-
-        return;
-
-    }
-
-
-    printWindow.document.write(`
-
-        <!DOCTYPE html>
-
-        <html>
-
-        <head>
-
-            <title>
-
-                S Square Dealer Report
-
-            </title>
-
-
-            <style>
-
-                body{
-
-                    font-family:Arial,sans-serif;
-
-                    padding:25px;
-
-                    color:#17324d;
-
-                }
-
-
-                h1{
-
-                    text-align:center;
-
-                    margin-bottom:5px;
-
-                }
-
-
-                .filter{
-
-                    text-align:center;
-
-                    margin-bottom:20px;
-
-                    font-size:12px;
-
-                    color:#566b7d;
-
-                }
-
-
-                table{
-
-                    width:100%;
-
-                    border-collapse:collapse;
-
-                }
-
-
-                th{
-
-                    background:#0878bd;
-
-                    color:white;
-
-                    padding:8px;
-
-                    border:1px solid #ddd;
-
-                    font-size:11px;
-
-                }
-
-
-                td{
-
-                    padding:7px;
-
-                    border:1px solid #ddd;
-
-                    font-size:10px;
-
-                }
-
-
-                .total-row{
-
-                    font-weight:bold;
-
-                    background:#eaf6ff;
-
-                }
-
-
-                @media print{
-
-                    @page{
-
-                        size:landscape;
-
-                        margin:10mm;
+    search.oninput =
+        function(){
+
+            const text =
+                this.value.toLowerCase();
+
+
+            list
+                .querySelectorAll(
+                    "label"
+                )
+                .forEach(
+                    label => {
+
+                        label.style.display =
+                            label.textContent
+                                .toLowerCase()
+                                .includes(text)
+                            ? "block"
+                            : "none";
 
                     }
+                );
 
-                }
-
-            </style>
-
-        </head>
-
-
-        <body>
-
-            <h1>
-
-                S Square Marketing
-
-            </h1>
-
-
-            <div class="filter">
-
-                ${reportText}
-
-            </div>
-
-
-            ${table.outerHTML}
-
-        </body>
-
-        </html>
-
-    `);
-
-
-    printWindow.document.close();
-
-
-    printWindow.focus();
-
-
-    setTimeout(
-
-        () => {
-
-            printWindow.print();
-
-        },
-
-        500
-
-    );
+        };
 
 }
 
-/* =========================================================
-   PART 3
-   DASHBOARD 1 - DEALER WISE TABLE
-   SERIAL NO + SORTING + FILTER REPORT
-========================================================= */
 
-let dealerTableSort = {
-    column: "dealer",
-    direction: "asc"
-};
+// ============================================================
+// D2 FILTERED
+// ============================================================
+
+function d2FilteredRows(){
+
+    const from =
+        document.getElementById(
+            "d2-from"
+        ).value
+
+        ?
+
+        new Date(
+            document.getElementById(
+                "d2-from"
+            ).value
+        )
+
+        :
+
+        null;
 
 
-/* =========================================================
-   DEALER TABLE SORT
-========================================================= */
+    const to =
+        document.getElementById(
+            "d2-to"
+        ).value
 
-function sortDealerTable(column) {
+        ?
 
-    if (dealerTableSort.column === column) {
+        new Date(
+            document.getElementById(
+                "d2-to"
+            ).value +
+            "T23:59:59"
+        )
 
-        dealerTableSort.direction =
-            dealerTableSort.direction === "asc"
-                ? "desc"
-                : "asc";
+        :
 
-    } else {
+        null;
 
-        dealerTableSort.column = column;
-        dealerTableSort.direction = "asc";
 
-    }
+    const typeColumn =
+        d2FindColumn(
+            ["TYPE"]
+        );
 
-    updateDealerWiseTable();
+
+    const brandColumn =
+        d2FindColumn(
+            [
+                "BRAND NAME",
+                "BRAND"
+            ]
+        );
+
+
+    const dealerColumn =
+        d2FindColumn(
+            [
+                "DEALER NAME",
+                "DEALER"
+            ]
+        );
+
+
+    const dateColumn =
+        d2FindColumn(
+            [
+                "DATE",
+                "Invoice Date",
+                "Sales Date"
+            ]
+        );
+
+
+    return d2Data.filter(row => {
+
+        const rowDate =
+            d2Date(
+                row[dateColumn]
+            );
+
+
+        return (
+
+            (
+                !d2Selected.fy.size
+                ||
+                d2Selected.fy.has(
+                    d2FY(row)
+                )
+            )
+
+            &&
+
+            (
+                !d2Selected.type.size
+                ||
+                d2Selected.type.has(
+                    String(
+                        row[typeColumn] || ""
+                    ).trim()
+                )
+            )
+
+            &&
+
+            (
+                !d2Selected.brand.size
+                ||
+                d2Selected.brand.has(
+                    String(
+                        row[brandColumn] || ""
+                    ).trim()
+                )
+            )
+
+            &&
+
+            (
+                !d2Selected.dealer.size
+                ||
+                d2Selected.dealer.has(
+                    String(
+                        row[dealerColumn] || ""
+                    ).trim()
+                )
+            )
+
+            &&
+
+            (
+                (!from && !to)
+
+                ||
+
+                (
+                    rowDate
+
+                    &&
+
+                    (!from ||
+                        rowDate >= from)
+
+                    &&
+
+                    (!to ||
+                        rowDate <= to)
+                )
+
+            )
+
+        );
+
+    });
+
 }
 
 
-/* =========================================================
-   SORT ICON
-========================================================= */
+// ============================================================
+// D2 KPI
+// ============================================================
 
-function dealerSortIcon(column) {
+function d2UpdateKPI(rows){
 
-    if (dealerTableSort.column !== column) {
-        return "↕";
-    }
+    let target = 0;
 
-    return dealerTableSort.direction === "asc"
-        ? "↑"
-        : "↓";
+    let sale = 0;
+
+    let ret = 0;
+
+    const dealers =
+        new Set();
+
+
+    rows.forEach(row => {
+
+        target +=
+            targetOf(row);
+
+        sale +=
+            saleOf(row);
+
+        ret +=
+            returnOf(row);
+
+
+        if(
+            row["DEALER NAME"]
+        ){
+
+            dealers.add(
+                row["DEALER NAME"]
+            );
+
+        }
+
+    });
+
+
+    const net =
+        sale - ret;
+
+
+    document.getElementById(
+        "d2-target"
+    ).textContent =
+        money(target);
+
+
+    document.getElementById(
+        "d2-sales"
+    ).textContent =
+        money(sale);
+
+
+    document.getElementById(
+        "d2-return"
+    ).textContent =
+        money(ret);
+
+
+    document.getElementById(
+        "d2-net"
+    ).textContent =
+        money(net);
+
+
+    document.getElementById(
+        "d2-achieve"
+    ).textContent =
+        pct(
+            target
+            ? net / target * 100
+            : 0
+        );
+
+
+    document.getElementById(
+        "d2-return-pct"
+    ).textContent =
+        pct(
+            sale
+            ? ret / sale * 100
+            : 0
+        );
+
+
+    document.getElementById(
+        "d2-dealers"
+    ).textContent =
+        numberFmt(
+            dealers.size
+        );
+
 }
 
 
-/* =========================================================
-   GET DEALER TABLE DATA
-========================================================= */
+// ============================================================
+// D2 TABLE
+// ============================================================
 
-function getDealerTableData(data) {
+function d2BuildTable(rows){
 
-    const dealers = {};
+    const table =
+        document.getElementById(
+            "dashboard2-table"
+        );
 
-    data.forEach(row => {
 
-        const dealer =
-            String(row["DEALER NAME"] || "").trim();
+    const brandColumn =
+        d2FindColumn(
+            [
+                "BRAND NAME",
+                "BRAND"
+            ]
+        );
 
-        if (!dealer) return;
 
-        if (!dealers[dealer]) {
+    const years = [
 
-            dealers[dealer] = {
-                dealer: dealer,
-                target: 0,
-                sale: 0,
-                returnValue: 0,
-                net: 0,
-                qty: 0
+        ...new Set(
+            rows
+            .map(d2FY)
+            .filter(Boolean)
+        )
+
+    ]
+
+    .sort(
+        (a,b) =>
+        String(b).localeCompare(
+            String(a),
+            undefined,
+            {
+                numeric:true
+            }
+        )
+    )
+
+    .slice(0,3);
+
+
+    const groups = {};
+
+
+    rows.forEach(row => {
+
+        const brand =
+            String(
+                row[brandColumn] || ""
+            ).trim();
+
+
+        const fy =
+            d2FY(row);
+
+
+        if(
+            !brand ||
+            !fy
+        ){
+
+            return;
+
+        }
+
+
+        const key =
+            brand + "|" + fy;
+
+
+        if(!groups[key]){
+
+            groups[key] = {
+
+                target:0,
+
+                qty:0,
+
+                net:0
+
             };
 
         }
 
-        dealers[dealer].target += targetOf(row);
 
-        dealers[dealer].sale += saleOf(row);
-
-        dealers[dealer].returnValue += returnOf(row);
-
-        dealers[dealer].net += netOf(row);
-
-        dealers[dealer].qty +=
-            qtySaleOf(row) - qtyReturnOf(row);
-
-    });
+        groups[key].target +=
+            targetOf(row);
 
 
-    return Object.values(dealers);
-
-}
-
-
-/* =========================================================
-   SORT DEALER DATA
-========================================================= */
-
-function sortDealerData(data) {
-
-    const column = dealerTableSort.column;
-    const direction = dealerTableSort.direction;
-
-    return data.sort((a, b) => {
-
-        let av = a[column];
-        let bv = b[column];
-
-        if (column === "dealer") {
-
-            av = String(av || "").toLowerCase();
-            bv = String(bv || "");
-
-            const result =
-                av.localeCompare(
-                    bv.toLowerCase(),
-                    undefined,
-                    {
-                        numeric: true,
-                        sensitivity: "base"
-                    }
-                );
-
-            return direction === "asc"
-                ? result
-                : -result;
-        }
+        groups[key].qty +=
+            qtySaleOf(row) -
+            qtyReturnOf(row);
 
 
-        av = Number(av) || 0;
-        bv = Number(bv) || 0;
-
-        if (av === bv) return 0;
-
-        const result = av > bv ? 1 : -1;
-
-        return direction === "asc"
-            ? result
-            : -result;
+        groups[key].net +=
+            netOf(row);
 
     });
 
-}
 
+    const brands = [
 
-/* =========================================================
-   DEALER TABLE - ACTIVE FILTER DISPLAY
-========================================================= */
+        ...new Set(
 
-function getActiveD1FilterText() {
+            rows
 
-    const active = [];
+            .map(
+                row =>
+                String(
+                    row[brandColumn] || ""
+                ).trim()
+            )
 
-    Object.entries(d1FilterDefs).forEach(
-        ([id, [column, label]]) => {
+            .filter(Boolean)
 
-            const selected =
-                d1Selected[id];
+        )
 
-            if (
-                selected &&
-                selected.size > 0
-            ) {
+    ].sort();
 
-                active.push(
-                    label +
-                    ": " +
-                    [...selected].join(", ")
-                );
-
-            }
-
-        }
-    );
-
-
-    if (!active.length) {
-
-        return "Report: All Data";
-
-    }
-
-    return "Report: " + active.join("  |  ");
-
-}
-
-
-/* =========================================================
-   UPDATE FILTER REPORT TEXT
-========================================================= */
-
-function updateDealerTableFilterInfo() {
-
-    const box =
-        document.getElementById(
-            "dealerTableFilterInfo"
-        );
-
-    if (!box) return;
-
-    box.textContent =
-        getActiveD1FilterText();
-
-}
-
-
-/* =========================================================
-   DEALER WISE TABLE
-========================================================= */
-
-function updateDealerWiseTable() {
-
-    const table =
-        document.getElementById(
-            "dashboard1-dealer-table"
-        );
-
-    if (!table) return;
-
-
-    const data =
-        getD1Data();
-
-
-    let dealerData =
-        getDealerTableData(data);
-
-
-    dealerData =
-        sortDealerData(dealerData);
-
-
-    /* =====================================================
-       TOTALS
-    ===================================================== */
-
-    let totalTarget = 0;
-    let totalQty = 0;
-    let totalNet = 0;
-
-
-    dealerData.forEach(row => {
-
-        totalTarget += row.target;
-
-        totalQty += row.qty;
-
-        totalNet += row.net;
-
-    });
-
-
-    /* =====================================================
-       TABLE HEADER
-    ===================================================== */
 
     let html = `
 
@@ -4491,1533 +3894,410 @@ function updateDealerWiseTable() {
 
             <tr>
 
-                <th>
-                    S.No
+                <th rowspan="2">
+                    BRAND NAME
                 </th>
 
-                <th
-                    class="sortable-header"
-                    onclick="sortDealerTable('dealer')"
-                    title="Click to sort"
-                >
-                    DEALER NAME
-                    ${dealerSortIcon("dealer")}
-                </th>
+    `;
 
-                <th
-                    class="sortable-header"
-                    onclick="sortDealerTable('target')"
-                    title="Click to sort"
-                >
-                    TARGET
-                    ${dealerSortIcon("target")}
-                </th>
 
-                <th
-                    class="sortable-header"
-                    onclick="sortDealerTable('qty')"
-                    title="Click to sort"
-                >
-                    NET QTY
-                    ${dealerSortIcon("qty")}
-                </th>
+    years.forEach(year => {
 
-                <th
-                    class="sortable-header"
-                    onclick="sortDealerTable('net')"
-                    title="Click to sort"
-                >
-                    NET VALUE
-                    ${dealerSortIcon("net")}
-                </th>
+        html += `
 
-                <th
-                    class="sortable-header"
-                    onclick="sortDealerTable('achieve')"
-                    title="Click to sort"
-                >
-                    ACHIEVE %
-                    ${dealerSortIcon("achieve")}
-                </th>
+            <th colspan="4">
+                ${escapeHtml(year)}
+            </th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th colspan="2">
+                GROWTH %
+            </th>
+
+            </tr>
+
+            <tr>
+
+    `;
+
+
+    years.forEach(() => {
+
+        html += `
+
+            <th>TARGET</th>
+
+            <th>NET QTY</th>
+
+            <th>NET VALUE</th>
+
+            <th>ACHIEVE %</th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th>CY vs PY</th>
+
+            <th>PY vs 2Y AGO</th>
 
             </tr>
 
         </thead>
 
         <tbody>
+
     `;
 
 
-    /* =====================================================
-       ROWS
-    ===================================================== */
+    brands.forEach(brand => {
 
-    dealerData.forEach((row, index) => {
+        const values =
+            years.map(
+                year =>
+                groups[
+                    brand +
+                    "|" +
+                    year
+                ] || {
 
-        const achieve =
-            row.target
-                ? (row.net / row.target) * 100
-                : 0;
+                    target:0,
 
+                    qty:0,
 
-        /* Store calculated value for sorting */
-        row.achieve = achieve;
+                    net:0
 
-
-        const achieveClass =
-            achieve >= 100
-                ? "growth-positive"
-                : "growth-negative";
+                }
+            );
 
 
         html += `
 
             <tr>
 
-                <td class="serial-number">
-                    ${index + 1}
+                <td>
+                    ${escapeHtml(brand)}
                 </td>
 
-                <td class="dealer-name">
-                    ${escapeHtml(row.dealer)}
+        `;
+
+
+        values.forEach(value => {
+
+            html += `
+
+                <td>
+                    ${money(value.target)}
                 </td>
 
                 <td>
-                    ${money(row.target)}
+                    ${numberFmt(value.qty)}
                 </td>
 
                 <td>
-                    ${numberFmt(row.qty)}
+                    ${money(value.net)}
                 </td>
 
                 <td>
-                    ${money(row.net)}
+                    ${
+                        pct(
+                            value.target
+                            ? value.net /
+                              value.target *
+                              100
+                            : 0
+                        )
+                    }
                 </td>
 
-                <td class="${achieveClass}">
-                    ${pct(achieve)}
-                </td>
+            `;
 
-            </tr>
+        });
+
+
+        let g1 =
+
+            values.length > 1 &&
+            values[1].net !== 0
+
+            ?
+
+            (
+                (
+                    values[0].net -
+                    values[1].net
+                )
+                /
+                Math.abs(
+                    values[1].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        let g2 =
+
+            values.length > 2 &&
+            values[2].net !== 0
+
+            ?
+
+            (
+                (
+                    values[1].net -
+                    values[2].net
+                )
+                /
+                Math.abs(
+                    values[2].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        html += `
+
+            <td
+                class="${
+                    g1 == null
+                    ? ""
+                    : g1 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g1 == null
+                    ? "—"
+                    : pct(g1) +
+                      (
+                        g1 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+
+            <td
+                class="${
+                    g2 == null
+                    ? ""
+                    : g2 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g2 == null
+                    ? "—"
+                    : pct(g2) +
+                      (
+                        g2 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+        </tr>
 
         `;
 
     });
 
 
-    /* =====================================================
-       TOTAL ROW
-    ===================================================== */
-
-    const totalAchieve =
-        totalTarget
-            ? (totalNet / totalTarget) * 100
-            : 0;
-
-
     html += `
 
-        <tr class="total-row">
-
-            <td></td>
-
-            <td>
-                TOTAL
-            </td>
-
-            <td>
-                ${money(totalTarget)}
-            </td>
-
-            <td>
-                ${numberFmt(totalQty)}
-            </td>
-
-            <td>
-                ${money(totalNet)}
-            </td>
-
-            <td>
-                ${pct(totalAchieve)}
-            </td>
-
-        </tr>
+        </tbody>
 
     `;
-
-
-    html += `</tbody>`;
 
 
     table.innerHTML = html;
 
-
-    updateDealerTableFilterInfo();
-
 }
 
-
-/* =========================================================
-   CONNECT DEALER TABLE WITH DASHBOARD 1
-========================================================= */
-
-function updateDashboard1DealerTable() {
-
-    updateDealerWiseTable();
-
-}
-
-
-/* =========================================================
-   UPDATE DASHBOARD 1
-   TABLE INCLUDED
-========================================================= */
-
-function updateDashboard1WithDealerTable() {
-
-    const data =
-        getD1Data();
-
-    updateD1KPI(data);
-
-    updateBrandChart(data);
-
-    updateMonthChart(data);
-
-    updateAgentChart(data);
-
-    updateDealerWiseTable();
-
-}
-
-
-/* =========================================================
-   TABLE EXPORT DATA HELPER
-========================================================= */
-
-function getDealerExportData() {
-
-    const data =
-        getD1Data();
-
-    let rows =
-        getDealerTableData(data);
-
-    rows =
-        sortDealerData(rows);
-
-
-    return rows.map((row, index) => {
-
-        const achieve =
-            row.target
-                ? (row.net / row.target) * 100
-                : 0;
-
-
-        return {
-
-            "S.No": index + 1,
-
-            "Dealer Name": row.dealer,
-
-            "Target": row.target,
-
-            "Net Qty": row.qty,
-
-            "Net Value": row.net,
-
-            "Achieve %": achieve
-
-        };
-
-    });
-
-}
-
-
-/* =========================================================
-   DEBUG / CHECK
-========================================================= */
-
-console.log(
-    "PART 3 - Dealer Table Loaded"
-);
 
 // ============================================================
-// PART 4 — FIXED VERSION
-// DASHBOARD 1
-// Dealer Wise Table + Sorting + Current Filter Report
-// Excel Export + PDF Export
-// IMPORTANT: Existing Part 1/2/3 functions ko replace nahi karta.
+// D2 UPDATE
 // ============================================================
 
-(function () {
+function d2Update(){
 
-  // ------------------------------------------------------------
-  // GLOBAL TABLE SETTINGS
-  // ------------------------------------------------------------
+    const rows =
+        d2FilteredRows();
 
-  let d1TableSortColumn = "dealer";
-  let d1TableSortDirection = "asc";
 
-  // ------------------------------------------------------------
-  // SAFE HTML
-  // ------------------------------------------------------------
+    d2UpdateKPI(rows);
 
-  function d1Safe(v) {
-    return String(v == null ? "" : v)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
+    d2BuildTable(rows);
 
-  // ------------------------------------------------------------
-  // GET FILTER TEXT
-  // ------------------------------------------------------------
+}
 
-  function d1CurrentFilterText() {
 
-    const defs = [
-      ["typeFilter", "TYPE"],
-      ["agentFilter", "AGENT NAME"],
-      ["brandFilter", "BRAND NAME"],
-      ["dealerFilter", "DEALER NAME"],
-      ["fyFilter", "F YEAR"],
-      ["monthFilter", "MONTH"],
-      ["yearFilter", "YEAR"],
-      ["quarterFilter", "FY QUARTER"],
-      ["seasonFilter", "SEASON"]
-    ];
+// ============================================================
+// LOAD D2
+// ============================================================
 
-    return defs.map(function (item) {
-
-      const id = item[0];
-      const label = item[1];
-
-      if (
-        typeof d1Selected === "undefined" ||
-        !d1Selected[id] ||
-        d1Selected[id].size === 0
-      ) {
-        return label + ": All";
-      }
-
-      return label + ": " +
-        Array.from(d1Selected[id]).join(", ");
-
-    }).join(" | ");
-  }
-
-  // ------------------------------------------------------------
-  // CREATE / FIND TABLE AREA
-  // ------------------------------------------------------------
-
-  function d1GetTableCard() {
-
-    let card = document.getElementById("dashboard1-table-card");
-
-    if (card) return card;
-
-    const dashboard = document.getElementById("dashboard1");
-
-    if (!dashboard) return null;
-
-    card = document.createElement("div");
-    card.id = "dashboard1-table-card";
-    card.className = "dashboard1-table-card";
-
-    card.innerHTML = `
-      <div class="d1-table-heading">
-        <div>
-          <h2>DEALER WISE TARGET vs ACHIEVEMENT</h2>
-          <div class="d1-table-subtitle">
-            LAST 3 FINANCIAL YEARS COMPARISON
-          </div>
-        </div>
-
-        <div class="d1-table-actions">
-          <button type="button"
-                  id="d1ExportExcel"
-                  class="d1-export-excel">
-            📊 Export Excel
-          </button>
-
-          <button type="button"
-                  id="d1ExportPDF"
-                  class="d1-export-pdf">
-            📄 Export PDF
-          </button>
-        </div>
-      </div>
-
-      <div class="d1-sort-help">
-        Click column header to sort
-        <br>
-        ↑ Ascending / ↓ Descending
-      </div>
-
-      <div class="d1-table-scroll">
-        <table id="dashboard1-table">
-        </table>
-      </div>
-    `;
-
-    dashboard.appendChild(card);
-
-    document.getElementById("d1ExportExcel")
-      .addEventListener("click", d1ExportExcel);
-
-    document.getElementById("d1ExportPDF")
-      .addEventListener("click", d1ExportPDF);
-
-    return card;
-  }
-
-  // ------------------------------------------------------------
-  // TABLE CSS
-  // ------------------------------------------------------------
-
-  function d1AddTableCSS() {
-
-    if (document.getElementById("d1-fixed-table-css")) return;
-
-    const style = document.createElement("style");
-    style.id = "d1-fixed-table-css";
-
-    style.textContent = `
-
-      .dashboard1-table-card {
-        margin-top: 16px;
-        background: #fff;
-        border: 1px solid #b7ddfa;
-        border-radius: 12px;
-        padding: 14px;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .d1-table-heading {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 15px;
-        margin-bottom: 5px;
-      }
-
-      .d1-table-heading h2 {
-        margin: 0;
-        font-size: 20px;
-        color: #0879bd;
-      }
-
-      .d1-table-subtitle {
-        margin-top: 4px;
-        font-size: 12px;
-        color: #718096;
-      }
-
-      .d1-table-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-
-      .d1-table-actions button {
-        border: 0;
-        color: #fff;
-        padding: 10px 18px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-      }
-
-      .d1-export-excel {
-        background: #159447;
-      }
-
-      .d1-export-pdf {
-        background: #e44747;
-      }
-
-      .d1-sort-help {
-        position: absolute;
-        right: 18px;
-        top: 55px;
-        color: #159447;
-        font-size: 11px;
-        text-align: right;
-        line-height: 1.3;
-      }
-
-      .d1-table-scroll {
-        margin-top: 10px;
-        overflow-x: auto;
-        overflow-y: auto;
-        max-height: 600px;
-        border-radius: 6px;
-      }
-
-      #dashboard1-table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 1100px;
-        font-size: 12px;
-      }
-
-      #dashboard1-table th {
-        background: #087dbb;
-        color: #fff;
-        padding: 9px 7px;
-        border: 1px solid #d6e8f5;
-        text-align: center;
-        white-space: nowrap;
-        cursor: pointer;
-        user-select: none;
-      }
-
-      #dashboard1-table th:hover {
-        background: #056b9f;
-      }
-
-      #dashboard1-table td {
-        padding: 7px;
-        border: 1px solid #dce8ef;
-        white-space: nowrap;
-      }
-
-      #dashboard1-table tbody tr:nth-child(even) {
-        background: #f5faff;
-      }
-
-      #dashboard1-table tbody tr:hover {
-        background: #eaf6ff;
-      }
-
-      #dashboard1-table td:first-child {
-        text-align: center;
-        font-weight: 600;
-      }
-
-      #dashboard1-table td:nth-child(2) {
-        text-align: left;
-        font-weight: 600;
-      }
-
-      #dashboard1-table td:not(:nth-child(2)):not(:first-child) {
-        text-align: right;
-      }
-
-      .d1-sort-arrow {
-        font-size: 11px;
-        margin-left: 4px;
-      }
-
-      .d1-growth-positive {
-        color: #159447;
-        font-weight: 700;
-      }
-
-      .d1-growth-negative {
-        color: #df3434;
-        font-weight: 700;
-      }
-
-      .d1-report-line {
-        margin-top: 10px;
-        background: #fff;
-        border: 1px solid #b7ddfa;
-        border-radius: 10px;
-        padding: 12px 15px;
-        color: #2d5877;
-        font-size: 14px;
-      }
-
-      .d1-report-line strong {
-        color: #087dbb;
-      }
-
-      @media(max-width:700px) {
-
-        .d1-table-heading {
-          flex-direction: column;
-        }
-
-        .d1-sort-help {
-          position: static;
-          text-align: left;
-          margin-bottom: 8px;
-        }
-
-        .d1-table-actions {
-          width: 100%;
-        }
-
-        .d1-table-actions button {
-          flex: 1;
-        }
-
-      }
-
-    `;
-
-    document.head.appendChild(style);
-  }
-
-  // ------------------------------------------------------------
-  // GET COLUMN NAME SAFELY
-  // ------------------------------------------------------------
-
-  function d1Column(possibleNames) {
-
-    if (typeof allData === "undefined" || !allData.length) {
-      return "";
-    }
-
-    const headers = Object.keys(allData[0]);
-
-    for (const name of possibleNames) {
-
-      const target = String(name)
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "");
-
-      const found = headers.find(function (h) {
-
-        return String(h)
-          .trim()
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, "") === target;
-
-      });
-
-      if (found) return found;
-    }
-
-    return "";
-  }
-
-  // ------------------------------------------------------------
-  // FINANCIAL YEAR
-  // ------------------------------------------------------------
-
-  function d1GetFY(row) {
-
-    const fyCol = d1Column([
-      "F YEAR",
-      "FY",
-      "FINANCIAL YEAR"
-    ]);
-
-    if (fyCol && row[fyCol]) {
-      return String(row[fyCol]).trim();
-    }
-
-    return "";
-  }
-
-  // ------------------------------------------------------------
-  // DEALER-WISE DATA
-  // ------------------------------------------------------------
-
-  function d1BuildDealerData(rows) {
-
-    const dealerCol = d1Column([
-      "DEALER NAME",
-      "DEALER"
-    ]);
-
-    if (!dealerCol) return {};
-
-    const groups = {};
-
-    rows.forEach(function (r) {
-
-      const dealer = String(r[dealerCol] || "").trim();
-
-      if (!dealer) return;
-
-      const fy = d1GetFY(r);
-
-      if (!groups[dealer]) {
-        groups[dealer] = {};
-      }
-
-      if (!groups[dealer][fy]) {
-        groups[dealer][fy] = {
-          target: 0,
-          qty: 0,
-          net: 0
-        };
-      }
-
-      groups[dealer][fy].target += targetOf(r);
-      groups[dealer][fy].qty +=
-        qtySaleOf(r) - qtyReturnOf(r);
-
-      groups[dealer][fy].net += netOf(r);
-
-    });
-
-    return groups;
-  }
-
-  // ------------------------------------------------------------
-  // SORT YEARS
-  // ------------------------------------------------------------
-
-  function d1GetYears(rows) {
-
-    const years = [
-      ...new Set(
-        rows
-          .map(d1GetFY)
-          .filter(Boolean)
-      )
-    ];
-
-    return years.sort(function (a, b) {
-
-      return String(b).localeCompare(
-        String(a),
-        undefined,
-        {
-          numeric: true
-        }
-      );
-
-    }).slice(0, 3);
-  }
-
-  // ------------------------------------------------------------
-  // SORT TABLE
-  // ------------------------------------------------------------
-
-  function d1SortRows(list) {
-
-    return list.sort(function (a, b) {
-
-      let av = a[d1TableSortColumn];
-      let bv = b[d1TableSortColumn];
-
-      if (
-        d1TableSortColumn === "dealer"
-      ) {
-
-        av = String(av || "").toUpperCase();
-        bv = String(bv || "").toUpperCase();
-
-      } else {
-
-        av = Number(av || 0);
-        bv = Number(bv || 0);
-
-      }
-
-      let result = 0;
-
-      if (typeof av === "string") {
-
-        result = av.localeCompare(
-          bv,
-          undefined,
-          {
-            numeric: true,
-            sensitivity: "base"
-          }
-        );
-
-      } else {
-
-        result = av - bv;
-
-      }
-
-      return d1TableSortDirection === "asc"
-        ? result
-        : -result;
-
-    });
-
-  }
-
-  // ------------------------------------------------------------
-  // SORT HEADER
-  // ------------------------------------------------------------
-
-  function d1SortHeader(key) {
-
-    if (d1TableSortColumn === key) {
-
-      d1TableSortDirection =
-        d1TableSortDirection === "asc"
-          ? "desc"
-          : "asc";
-
-    } else {
-
-      d1TableSortColumn = key;
-      d1TableSortDirection = "asc";
-
-    }
-
-    d1RenderTable();
-
-  }
-
-  window.d1SortHeader = d1SortHeader;
-
-  // ------------------------------------------------------------
-  // SORT ARROW
-  // ------------------------------------------------------------
-
-  function d1Arrow(key) {
-
-    if (d1TableSortColumn !== key) {
-      return "↕";
-    }
-
-    return d1TableSortDirection === "asc"
-      ? "↑"
-      : "↓";
-  }
-
-  // ------------------------------------------------------------
-  // TABLE HEADER
-  // ------------------------------------------------------------
-
-  function d1TH(text, key, rowSpan, colSpan) {
-
-    rowSpan = rowSpan || 1;
-    colSpan = colSpan || 1;
-
-    return `
-      <th
-        rowspan="${rowSpan}"
-        colspan="${colSpan}"
-        onclick="d1SortHeader('${key}')"
-      >
-        ${d1Safe(text)}
-        <span class="d1-sort-arrow">
-          ${d1Arrow(key)}
-        </span>
-      </th>
-    `;
-  }
-
-  // ------------------------------------------------------------
-  // RENDER TABLE
-  // ------------------------------------------------------------
-
-  function d1RenderTable() {
-
-    const table = document.getElementById(
-      "dashboard1-table"
-    );
-
-    if (!table) return;
-
-    if (
-      typeof allData === "undefined" ||
-      !Array.isArray(allData) ||
-      !allData.length
-    ) {
-
-      table.innerHTML = `
-        <tbody>
-          <tr>
-            <td style="text-align:center;padding:30px;">
-              Data loading...
-            </td>
-          </tr>
-        </tbody>
-      `;
-
-      return;
-    }
-
-    let rows;
+async function loadDashboard2() {
 
     try {
 
-      rows = getD1Data();
+        // Dashboard 1 ka same loaded data use karega
+        await loadGoogleSheetData();
+
+
+        if (!allData.length) {
+
+            throw new Error(
+                "No data available"
+            );
+
+        }
+
+
+        d2Data = allData;
+
+        d2Headers =
+            Object.keys(
+                allData[0] || {}
+            );
+
+
+        // Dashboard 2 filters
+        d2SetupMulti(
+            "fy",
+            "d2-fy"
+        );
+
+        d2SetupMulti(
+            "type",
+            "d2-type"
+        );
+
+        d2SetupMulti(
+            "brand",
+            "d2-brand"
+        );
+
+        d2SetupMulti(
+            "dealer",
+            "d2-dealer"
+        );
+
+
+        document.getElementById(
+            "d2-from"
+        ).onchange = d2Update;
+
+
+        document.getElementById(
+            "d2-to"
+        ).onchange = d2Update;
+
+
+        d2Update();
+
 
     } catch (e) {
 
-      console.error(
-        "Dashboard 1 filter error:",
-        e
-      );
-
-      rows = allData;
-
-    }
-
-    const years = d1GetYears(rows);
-    const groups = d1BuildDealerData(rows);
-
-    let dealers = Object.keys(groups);
-
-    dealers = dealers.map(function (dealer) {
-
-      const vals = years.map(function (fy) {
-
-        return groups[dealer][fy] || {
-          target: 0,
-          qty: 0,
-          net: 0
-        };
-
-      });
-
-      const current =
-        vals.length > 0 ? vals[0] : {
-          target: 0,
-          qty: 0,
-          net: 0
-        };
-
-      const previous =
-        vals.length > 1 ? vals[1] : {
-          target: 0,
-          qty: 0,
-          net: 0
-        };
-
-      const twoYearsAgo =
-        vals.length > 2 ? vals[2] : {
-          target: 0,
-          qty: 0,
-          net: 0
-        };
-
-      const growth1 =
-        previous.net !== 0
-          ? (
-              (current.net - previous.net) /
-              Math.abs(previous.net)
-            ) * 100
-          : null;
-
-      const growth2 =
-        twoYearsAgo.net !== 0
-          ? (
-              (previous.net - twoYearsAgo.net) /
-              Math.abs(twoYearsAgo.net)
-            ) * 100
-          : null;
-
-      return {
-        dealer: dealer,
-        vals: vals,
-        target: current.target,
-        qty: current.qty,
-        net: current.net,
-        achieve:
-          current.target
-            ? (current.net / current.target) * 100
-            : 0,
-        growth1: growth1,
-        growth2: growth2
-      };
-
-    });
-
-    // Sorting
-    dealers.sort(function (a, b) {
-
-      let av;
-      let bv;
-
-      switch (d1TableSortColumn) {
-
-        case "target":
-          av = a.target;
-          bv = b.target;
-          break;
-
-        case "qty":
-          av = a.qty;
-          bv = b.qty;
-          break;
-
-        case "net":
-          av = a.net;
-          bv = b.net;
-          break;
-
-        case "achieve":
-          av = a.achieve;
-          bv = b.achieve;
-          break;
-
-        case "growth1":
-          av = a.growth1 == null
-            ? -Infinity
-            : a.growth1;
-
-          bv = b.growth1 == null
-            ? -Infinity
-            : b.growth1;
-
-          break;
-
-        case "growth2":
-          av = a.growth2 == null
-            ? -Infinity
-            : a.growth2;
-
-          bv = b.growth2 == null
-            ? -Infinity
-            : b.growth2;
-
-          break;
-
-        default:
-          av = a.dealer.toUpperCase();
-          bv = b.dealer.toUpperCase();
-
-      }
-
-      let result;
-
-      if (typeof av === "string") {
-
-        result = av.localeCompare(
-          bv,
-          undefined,
-          {
-            numeric: true,
-            sensitivity: "base"
-          }
+        console.error(
+            "Dashboard 2 Error:",
+            e
         );
 
-      } else {
-
-        result = av - bv;
-
-      }
-
-      return d1TableSortDirection === "asc"
-        ? result
-        : -result;
-
-    });
-
-    // ----------------------------------------------------------
-    // HEADER
-    // ----------------------------------------------------------
-
-    let html = `
-      <thead>
-
-        <tr>
-
-          ${d1TH("S.NO", "sno", 2, 1)}
-
-          ${d1TH(
-            "DEALER NAME",
-            "dealer",
-            2,
-            1
-          )}
-
-    `;
-
-    years.forEach(function (year) {
-
-      html += `
-        <th colspan="4">
-          ${d1Safe(year)}
-        </th>
-      `;
-
-    });
-
-    html += `
-          <th colspan="2">
-            GROWTH %
-          </th>
-
-        </tr>
-
-        <tr>
-    `;
-
-    years.forEach(function () {
-
-      html += `
-        ${d1TH("TARGET", "target")}
-        ${d1TH("NET QTY", "qty")}
-        ${d1TH("NET VALUE", "net")}
-        ${d1TH("ACHIEVE %", "achieve")}
-      `;
-
-    });
-
-    html += `
-          ${d1TH("CY vs PY", "growth1")}
-          ${d1TH("PY vs 2Y AGO", "growth2")}
-        </tr>
-
-      </thead>
-
-      <tbody>
-    `;
-
-    // ----------------------------------------------------------
-    // BODY
-    // ----------------------------------------------------------
-
-    dealers.forEach(function (dealer, index) {
-
-      html += `
-        <tr>
-
-          <td>${index + 1}</td>
-
-          <td>
-            ${d1Safe(dealer.dealer)}
-          </td>
-      `;
-
-      dealer.vals.forEach(function (v) {
-
-        html += `
-          <td>${money(v.target)}</td>
-          <td>${numberFmt(v.qty)}</td>
-          <td>${money(v.net)}</td>
-          <td>${pct(
-            v.target
-              ? (v.net / v.target) * 100
-              : 0
-          )}</td>
-        `;
-
-      });
-
-      const g1 = dealer.growth1;
-      const g2 = dealer.growth2;
-
-      html += `
-        <td class="${
-          g1 == null
-            ? ""
-            : g1 >= 0
-              ? "d1-growth-positive"
-              : "d1-growth-negative"
-        }">
-          ${
-            g1 == null
-              ? "—"
-              : pct(g1) +
-                (g1 >= 0 ? " ↑" : " ↓")
-          }
-        </td>
-
-        <td class="${
-          g2 == null
-            ? ""
-            : g2 >= 0
-              ? "d1-growth-positive"
-              : "d1-growth-negative"
-        }">
-          ${
-            g2 == null
-              ? "—"
-              : pct(g2) +
-                (g2 >= 0 ? " ↑" : " ↓")
-          }
-        </td>
-
-        </tr>
-      `;
-
-    });
-
-    if (!dealers.length) {
-
-      html += `
-        <tr>
-          <td
-            colspan="${2 + years.length * 4 + 2}"
-            style="
-              text-align:center;
-              padding:30px;
-              color:#777;
-            "
-          >
-            No data found for selected filters.
-          </td>
-        </tr>
-      `;
-
     }
 
-    html += `
-      </tbody>
-    `;
+}
+// ============================================================
+// RESET DASHBOARD 2
+// ============================================================
 
-    table.innerHTML = html;
+function resetDashboard2(){
 
-  }
+    d2Selected = {
 
-  // ------------------------------------------------------------
-  // CURRENT REPORT LINE
-  // ------------------------------------------------------------
+        fy:new Set(),
 
-  function d1RenderCurrentReport() {
+        type:new Set(),
 
-    const dashboard =
-      document.getElementById("dashboard1");
+        brand:new Set(),
 
-    if (!dashboard) return;
+        dealer:new Set()
 
-    let line =
-      document.getElementById(
-        "d1-current-report"
-      );
+    };
 
-    if (!line) {
 
-      line = document.createElement("div");
-      line.id = "d1-current-report";
-      line.className = "d1-report-line";
+    document
+        .querySelectorAll(
+            "#dashboard2 .multi-menu input[type=checkbox]"
+        )
+        .forEach(
+            checkbox =>
+            checkbox.checked = false
+        );
 
-      dashboard.appendChild(line);
 
-    }
+    document
+        .querySelectorAll(
+            "#dashboard2 .multi-select button"
+        )
+        .forEach(
+            (button,index) => {
 
-    line.innerHTML = `
-      <strong>Current Report:</strong>
-      ${d1Safe(d1CurrentFilterText())}
-    `;
+                button.textContent = [
 
-  }
+                    "All FY ▾",
 
-  // ------------------------------------------------------------
-  // EXPORT EXCEL
-  // ------------------------------------------------------------
+                    "All TYPE ▾",
 
-  function d1ExportExcel() {
+                    "All BRAND ▾",
 
-    const table =
-      document.getElementById(
-        "dashboard1-table"
-      );
+                    "All DEALER ▾"
 
-    if (!table) {
+                ][index];
 
-      alert("Dashboard 1 table nahi mila.");
-      return;
+            }
+        );
 
-    }
 
-    const reportName =
-      "Dealer Wise Target vs Achievement";
+    document.getElementById(
+        "d2-from"
+    ).value = "";
 
-    const html = `
-      <html>
-      <head>
-        <meta charset="UTF-8">
-      </head>
-      <body>
 
-        <h2>S Square Marketing Pvt. Ltd. & S Square Ventures</h2>
+    document.getElementById(
+        "d2-to"
+    ).value = "";
 
-        <h3>${reportName}</h3>
 
-        <p>
-          ${d1CurrentFilterText()}
-        </p>
+    d2Update();
 
-        ${table.outerHTML}
+}
 
-      </body>
-      </html>
-    `;
 
-    const blob = new Blob(
-      ["\ufeff", html],
-      {
-        type:
-          "application/vnd.ms-excel;charset=utf-8;"
-      }
-    );
+// ============================================================
+// START DASHBOARD
+// ============================================================
 
-    const url =
-      URL.createObjectURL(blob);
-
-    const a =
-      document.createElement("a");
-
-    a.href = url;
-    a.download =
-      "Dealer_Wise_Target_vs_Achievement.xls";
-
-    document.body.appendChild(a);
-    a.click();
-
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-  }
-
-  // ------------------------------------------------------------
-  // EXPORT PDF
-  // ------------------------------------------------------------
-
-  function d1ExportPDF() {
-
-    const table =
-      document.getElementById(
-        "dashboard1-table"
-      );
-
-    if (!table) {
-
-      alert("Dashboard 1 table nahi mila.");
-      return;
-
-    }
-
-    const win =
-      window.open(
-        "",
-        "_blank"
-      );
-
-    if (!win) {
-
-      alert(
-        "PDF ke liye popup allow karein."
-      );
-
-      return;
-
-    }
-
-    win.document.write(`
-      <!DOCTYPE html>
-
-      <html>
-
-      <head>
-
-        <meta charset="UTF-8">
-
-        <title>
-          Dealer Wise Target vs Achievement
-        </title>
-
-        <style>
-
-          @page {
-            size: landscape;
-            margin: 10mm;
-          }
-
-          body {
-            font-family: Arial, sans-serif;
-            font-size: 9px;
-          }
-
-          h2 {
-            color: #087dbb;
-            margin-bottom: 4px;
-          }
-
-          h3 {
-            margin: 4px 0;
-          }
-
-          table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          th {
-            background: #087dbb;
-            color: white;
-            border: 1px solid #ccc;
-            padding: 5px;
-          }
-
-          td {
-            border: 1px solid #ccc;
-            padding: 4px;
-          }
-
-          td {
-            text-align: right;
-          }
-
-          td:nth-child(1),
-          td:nth-child(2) {
-            text-align: left;
-          }
-
-        </style>
-
-      </head>
-
-      <body>
-
-        <h2>
-          S Square Marketing Pvt. Ltd. & S Square Ventures
-        </h2>
-
-        <h3>
-          Dealer Wise Target vs Achievement
-        </h3>
-
-        <div>
-          ${d1Safe(d1CurrentFilterText())}
-        </div>
-
-        <br>
-
-        ${table.outerHTML}
-
-      </body>
-
-      </html>
-    `);
-
-    win.document.close();
-
-    setTimeout(function () {
-
-      win.focus();
-      win.print();
-
-    }, 500);
-
-  }
-
-  // ------------------------------------------------------------
-  // WRAP EXISTING DASHBOARD 1 UPDATE
-  // ------------------------------------------------------------
-
-  function d1InstallUpdateHook() {
-
-    if (
-      typeof window.updateDashboard1 !==
-      "function"
-    ) {
-
-      return false;
-
-    }
-
-    if (
-      window.updateDashboard1.__d1FixedPart4
-    ) {
-
-      return true;
-
-    }
-
-    const oldUpdate =
-      window.updateDashboard1;
-
-    function fixedUpdateDashboard1() {
-
-      // IMPORTANT:
-      // Pehle existing KPI + charts update honge.
-      oldUpdate();
-
-      // Uske baad table/report update hoga.
-      d1RenderTable();
-      d1RenderCurrentReport();
-
-    }
-
-    fixedUpdateDashboard1.__d1FixedPart4 = true;
-
-    window.updateDashboard1 =
-      fixedUpdateDashboard1;
-
-    return true;
-
-  }
-
-  // ------------------------------------------------------------
-  // INITIALIZE
-  // ------------------------------------------------------------
-
-  function d1Part4Init() {
-
-    d1AddTableCSS();
-
-    d1GetTableCard();
-
-    d1InstallUpdateHook();
-
-    if (
-      typeof allData !== "undefined" &&
-      Array.isArray(allData) &&
-      allData.length
-    ) {
-
-      d1RenderTable();
-      d1RenderCurrentReport();
-
-    }
-
-  }
-
-  // ------------------------------------------------------------
-  // RECHECK AFTER EXISTING SCRIPT LOAD
-  // ------------------------------------------------------------
-
-  document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-      d1Part4Init();
-
-      setTimeout(
-        d1Part4Init,
-        500
-      );
-
-      setTimeout(
-        d1Part4Init,
-        1500
-      );
-
-      setTimeout(
-        d1Part4Init,
-        3000
-      );
-
-    }
-  );
-
-  // ------------------------------------------------------------
-  // ALSO WATCH DATA LOAD
-  // ------------------------------------------------------------
-
-  const d1Wait =
-    setInterval(function () {
-
-      if (
-        typeof allData !== "undefined" &&
-        Array.isArray(allData) &&
-        allData.length
-      ) {
-
-        d1Part4Init();
-
-        clearInterval(d1Wait);
-
-      }
-
-    }, 500);
-
-})();
+loadGoogleSheetData();
