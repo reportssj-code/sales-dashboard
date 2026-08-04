@@ -811,7 +811,24 @@ body{
 }
 
 .reset-btn{
+   .d2-reset-inline{
+    width:100%;
+    height:35px;
+    align-self:end;
 
+    padding:0 10px;
+    border:none;
+    border-radius:6px;
+
+    background:#0878bd;
+    color:#fff;
+
+    font-size:11px;
+    font-weight:700;
+
+    cursor:pointer;
+    white-space:nowrap;
+}
     border:none;
 
     background:#0878bd;
@@ -830,15 +847,17 @@ body{
 }
 
 .dashboard2-filters{
-
     display:grid;
 
+    /* Reset + 6 Filters = 7 columns */
     grid-template-columns:
-        repeat(3,1fr);
+        repeat(7, minmax(0, 1fr));
 
     gap:10px;
-
     margin-bottom:12px;
+
+    position:relative;
+    z-index:10000;
 }
 
 .dashboard2-filters label{
@@ -874,12 +893,14 @@ body{
 }
 
 .multi-select{
-
     position:relative;
-
     width:100%;
+    z-index:10001;
 }
 
+.multi-select.open{
+    z-index:100000;
+}
 .multi-select>button{
 
     width:100%;
@@ -904,36 +925,29 @@ body{
 }
 
 .multi-menu{
-
     display:none;
 
     position:absolute;
-
     top:40px;
-
     left:0;
-
     right:0;
 
     max-height:250px;
-
     overflow-y:auto;
 
     background:#fff;
 
     border:1px solid #b9dfff;
-
     border-radius:7px;
 
     padding:7px;
 
-    z-index:9999;
+    z-index:100000;
 
     box-shadow:0 8px 25px rgba(0,0,0,.15);
 }
 
 .multi-select.open .multi-menu{
-
     display:block;
 }
 
@@ -1319,6 +1333,36 @@ body{
 
     .cards{
 
+        grid-template-columns:1fr;
+    }
+
+}
+
+/* =========================================================
+   DASHBOARD 2 FILTER RESPONSIVE
+========================================================= */
+
+@media (max-width:1200px){
+
+    .dashboard2-filters{
+        grid-template-columns:
+            repeat(4, minmax(0,1fr));
+    }
+
+}
+
+@media (max-width:800px){
+
+    .dashboard2-filters{
+        grid-template-columns:
+            repeat(2, minmax(0,1fr));
+    }
+
+}
+
+@media (max-width:500px){
+
+    .dashboard2-filters{
         grid-template-columns:1fr;
     }
 
