@@ -1,120 +1,4011 @@
 // ============================================================
-// S SQUARE SALES DASHBOARD - DASHBOARD 1 + DASHBOARD 2
-// Google Sheet -> GitHub Pages
-// DATA column is used to identify TARGET / SALE / RETURN rows.
+// S SQUARE SALES DASHBOARD
+// DASHBOARD 1 + DASHBOARD 2
 // ============================================================
 
-const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQkx61LU5M5w6cafCI36sVjmFbBZ5lK2krxwI-uxLsblvc0RBX5YHk7C9iKFbQvYM9RAcFQwYcuIdkn/pub?gid=1181069336&single=true&output=csv";
-let allData=[];let charts={};
-const d1FilterDefs={typeFilter:["TYPE","TYPE"],agentFilter:["AGENT NAME","AGENT NAME"],brandFilter:["BRAND NAME","BRAND NAME"],dealerFilter:["DEALER NAME","DEALER NAME"],monthFilter:["MONTH","MONTH"],yearFilter:["YEAR","YEAR"],quarterFilter:["FY Quarter","FY QUARTER"],fyFilter:["F YEAR","F YEAR"],seasonFilter:["SEASON","SEASON"]};
-const d1Selected={};Object.keys(d1FilterDefs).forEach(k=>d1Selected[k]=new Set());
+const CSV_URL =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vQkx61LU5M5w6cafCI36sVjmFbBZ5lK2krxwI-uxLsblvc0RBX5YHk7C9iKFbQvYM9RAcFQwYcuIdkn/pub?gid=1181069336&single=true&output=csv";
 
-function parseCSV(text){const rows=[];let row=[],value="",q=false;for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];if(c==='"'&&q&&n==='"'){value+='"';i++;}else if(c==='"'){q=!q;}else if(c===','&&!q){row.push(value.trim());value="";}else if((c==='\n'||c==='\r')&&!q){if(c==='\r'&&n==='\n')i++;row.push(value.trim());if(row.some(x=>x!==""))rows.push(row);row=[];value="";}else value+=c;}if(value!==""||row.length){row.push(value.trim());if(row.some(x=>x!==""))rows.push(row);}if(!rows.length)return[];const headers=rows[0].map(x=>x.trim());return rows.slice(1).map(r=>{const o={};headers.forEach((h,i)=>o[h]=r[i]||"");return o;});}
-function num(v){if(v==null)return 0;const n=parseFloat(String(v).replace(/₹/g,'').replace(/,/g,'').replace(/\s/g,''));return isNaN(n)?0:n;}
-function money(v){v=Number(v)||0;if(v>=1e7)return '₹ '+(v/1e7).toFixed(2)+' Cr';if(v>=1e5)return '₹ '+(v/1e5).toFixed(2)+' L';return '₹ '+v.toLocaleString('en-IN',{maximumFractionDigits:0});}
-function numberFmt(v){return Number(v||0).toLocaleString('en-IN',{maximumFractionDigits:0});}
-function pct(v){return (Number(v)||0).toFixed(2)+'%';}
-function norm(v){return String(v||'').trim().toUpperCase();}
-function dataType(row){const s=norm(row['DATA']);if(s.includes('TARGET'))return 'TARGET';if(s.includes('RETURN'))return 'RETURN';if(s.includes('SALE'))return 'SALE';return 'SALE';}
-function targetOf(row){return dataType(row)==='TARGET'?num(row['VALUE']):0;}
-function saleOf(row){return dataType(row)==='SALE'?num(row['VALUE']):0;}
-function returnOf(row){return dataType(row)==='RETURN'?Math.abs(num(row['VALUE'])):0;}
-function qtySaleOf(row){return dataType(row)==='SALE'?num(row['QTY']):0;}
-function qtyReturnOf(row){return dataType(row)==='RETURN'?Math.abs(num(row['QTY'])):0;}
-function netOf(row){return saleOf(row)-returnOf(row);}
 
-async function loadData(){try{const r=await fetch(CSV_URL+'&t='+Date.now());if(!r.ok)throw Error('Google Sheet load failed');allData=parseCSV(await r.text());setupD1Filters();updateDashboard1();}catch(e){console.error(e);alert('Google Sheet se data load nahi ho pa raha hai. Published CSV link check karein.');}}
+let allData = [];
 
-function setupD1Filters(){Object.entries(d1FilterDefs).forEach(([id,[col,label]])=>{const old=document.getElementById(id);if(old)old.remove();const box=document.createElement('div');box.className='filter-box';box.id=id;box.innerHTML=`<button type="button" class="filter-button"><span>All ${label}</span><span>⌄</span></button><div class="filter-dropdown"></div>`;document.getElementById('d1Filters').appendChild(box);box.querySelector('.filter-button').onclick=e=>{e.stopPropagation();toggleD1Filter(id);};const menu=box.querySelector('.filter-dropdown');const search=document.createElement('input');search.className='filter-search';search.placeholder='🔍 Search...';menu.appendChild(search);const allLabel=document.createElement('label');allLabel.className='filter-option filter-all';allLabel.innerHTML='<input type="checkbox" checked> All';menu.appendChild(allLabel);const list=document.createElement('div');menu.appendChild(list);const vals=[...new Set(allData.map(r=>String(r[col]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));vals.forEach(v=>{const l=document.createElement('label');l.className='filter-option';l.innerHTML=`<input type="checkbox" value="${escapeHtml(v)}"> ${escapeHtml(v)}`;list.appendChild(l);});const allCb=allLabel.querySelector('input');allCb.onchange=()=>{if(allCb.checked){d1Selected[id].clear();list.querySelectorAll('input').forEach(x=>x.checked=false);updateD1Button(id,label);updateDashboard1();}};list.querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(cb.checked)d1Selected[id].add(cb.value);else d1Selected[id].delete(cb.value);allCb.checked=d1Selected[id].size===0;updateD1Button(id,label);updateDashboard1();});search.oninput=()=>{const s=search.value.toLowerCase();list.querySelectorAll('label').forEach(l=>l.style.display=l.textContent.toLowerCase().includes(s)?'flex':'none');};});}
-function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function toggleD1Filter(id){const target=document.getElementById(id);document.querySelectorAll('#d1Filters .filter-box').forEach(b=>{if(b!==target)b.classList.remove('open');});target.classList.toggle('open');}
-document.addEventListener('click',e=>{if(!e.target.closest('.filter-box'))document.querySelectorAll('.filter-box').forEach(b=>b.classList.remove('open'));});
-function updateD1Button(id,label){const b=document.querySelector('#'+id+' .filter-button span:first-child');const n=d1Selected[id].size;b.textContent=n?n+' Selected':'All '+label;}
-function getD1Data(){return allData.filter(r=>Object.entries(d1FilterDefs).every(([id,[col]])=>!d1Selected[id].size||d1Selected[id].has(String(r[col]||'').trim())));}
-function updateDashboard1(){const data=getD1Data();updateD1KPI(data);updateBrandChart(data);updateMonthChart(data);updateAgentChart(data);updateDealerChart(data);}
-function updateD1KPI(data){let target=0,sale=0,ret=0;const dealers=new Set();data.forEach(r=>{target+=targetOf(r);sale+=saleOf(r);ret+=returnOf(r);if(r['DEALER NAME'])dealers.add(r['DEALER NAME']);});const net=sale-ret;document.getElementById('targetValue').textContent=money(target);document.getElementById('saleValue').textContent=money(sale);document.getElementById('returnValue').textContent=money(ret);document.getElementById('netSaleValue').textContent=money(net);document.getElementById('achievePercent').textContent=pct(target?net/target*100:0);document.getElementById('returnPercent').textContent=pct(sale?ret/sale*100:0);document.getElementById('dealerCount').textContent=numberFmt(dealers.size);}
-function chartOptions(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:c=>money(c.raw)}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>money(v)}}}};}
-function makeChart(id,type,labels,datasets,opts={}){const c=document.getElementById(id);if(!c)return;if(charts[id])charts[id].destroy();charts[id]=new Chart(c,{type,data:{labels,datasets},options:{...chartOptions(),...opts}});}
-function grouped(data,col){const m={};data.forEach(r=>{const k=r[col]||'Blank';if(!m[k])m[k]={target:0,net:0};m[k].target+=targetOf(r);m[k].net+=netOf(r);});return m;}
-function updateBrandChart(data){const g=grouped(data,'BRAND NAME');const labels=Object.keys(g).sort((a,b)=>g[b].net-g[a].net);const inner=document.querySelector('.brand-chart-inner');inner.style.minWidth=Math.max(900,labels.length*90)+'px';makeChart('brandChart','bar',labels,[{label:'Target',data:labels.map(x=>g[x].target),borderWidth:1,borderRadius:4},{label:'Net Sale',data:labels.map(x=>g[x].net),borderWidth:1,borderRadius:4}],{scales:{y:{beginAtZero:true,ticks:{callback:v=>money(v)}}}});}
-function monthOrder(){return ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];}
-function updateMonthChart(data){const g={};data.forEach(r=>{const k=r['MONTH']||'Blank';if(!g[k])g[k]={target:0,net:0};g[k].target+=targetOf(r);g[k].net+=netOf(r);});const labels=[...monthOrder().filter(m=>g[m]),...Object.keys(g).filter(m=>!monthOrder().includes(m))];makeChart('monthChart','line',labels,[{label:'Net Sale',data:labels.map(x=>g[x].net),borderWidth:3,tension:.3,fill:false},{label:'Target',data:labels.map(x=>g[x].target),borderWidth:3,borderDash:[8,5],tension:.3,fill:false}],{scales:{y:{beginAtZero:true,ticks:{callback:v=>money(v)}}}});}
-function updateAgentChart(data){const g=grouped(data,'AGENT NAME');const labels=Object.keys(g).sort((a,b)=>g[b].net-g[a].net);makeChart('agentChart','bar',labels,[{label:'Target',data:labels.map(x=>g[x].target),borderWidth:1,borderRadius:4},{label:'Net Sale',data:labels.map(x=>g[x].net),borderWidth:1,borderRadius:4}],{scales:{y:{beginAtZero:true,ticks:{callback:v=>money(v)}}}});}
-function updateDealerChart(data){const g=grouped(data,'DEALER NAME');const labels=Object.keys(g).sort((a,b)=>g[b].net-g[a].net).slice(0,20);makeChart('dealerChart','bar',labels,[{label:'Net Sale',data:labels.map(x=>g[x].net),borderWidth:1,borderRadius:4}],{scales:{y:{beginAtZero:true,ticks:{callback:v=>money(v)}}}});}
+let charts = {};
 
-// ================= DASHBOARD 2 =================
-let d2Data=[],d2Headers=[];let d2Selected={fy:new Set(),type:new Set(),brand:new Set(),dealer:new Set()};
-function showDashboard(n){document.getElementById('dashboard1').style.display=n===1?'block':'none';document.getElementById('dashboard2').style.display=n===2?'block':'none';document.querySelectorAll('.dash-tab').forEach((b,i)=>b.classList.toggle('active',i===n-1));if(n===2&&!d2Data.length)loadDashboard2();}
-function toggleMulti(id){const b=document.getElementById(id);document.querySelectorAll('.multi-select').forEach(x=>{if(x!==b)x.classList.remove('open')});b.classList.toggle('open');}
-document.addEventListener('click',e=>{if(!e.target.closest('.multi-select'))document.querySelectorAll('.multi-select').forEach(x=>x.classList.remove('open'));});
-function d2FindColumn(names){const hs=d2Headers.map(h=>norm(h).replace(/[^A-Z0-9]/g,''));for(const n of names){const i=hs.indexOf(norm(n).replace(/[^A-Z0-9]/g,''));if(i>=0)return d2Headers[i];}return '';}
-function d2Date(v){if(!v)return null;let s=String(v).trim(),m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);let d=m?new Date(+m[3],+m[2]-1,+m[1]):new Date(s);return isNaN(d)?null:d;}
-function d2FY(r){const c=d2FindColumn(['F YEAR','FY','Financial Year']);if(c&&r[c])return String(r[c]).trim();const dc=d2FindColumn(['DATE','Invoice Date','Sales Date']);const d=d2Date(r[dc]);if(!d)return '';const y=d.getFullYear(),m=d.getMonth()+1;return m>=4?y+'-'+String(y+1).slice(-2):(y-1)+'-'+String(y).slice(-2);}
-function d2Values(type){if(type==='fy')return [...new Set(d2Data.map(d2FY).filter(Boolean))].sort().reverse();const map={type:['TYPE'],brand:['BRAND NAME','BRAND'],dealer:['DEALER NAME','DEALER']};const c=d2FindColumn(map[type]);return c?[...new Set(d2Data.map(r=>String(r[c]||'').trim()).filter(Boolean))].sort():[];}
-function d2SetupMulti(type,id){const root=document.getElementById(id),menu=root.querySelector('.multi-menu'),button=root.querySelector('button');menu.innerHTML='';const search=document.createElement('input');search.className='multi-search';search.placeholder='🔍 Search...';menu.appendChild(search);const all=document.createElement('label');all.className='multi-all';all.innerHTML='<input type="checkbox" checked> All';menu.appendChild(all);const list=document.createElement('div');menu.appendChild(list);d2Values(type).forEach(v=>{const l=document.createElement('label');l.innerHTML=`<input type="checkbox" value="${escapeHtml(v)}"> ${escapeHtml(v)}`;list.appendChild(l);});const allCb=all.querySelector('input');allCb.onchange=()=>{if(allCb.checked){d2Selected[type].clear();list.querySelectorAll('input').forEach(x=>x.checked=false);button.textContent='All '+type.toUpperCase()+' ▾';d2Update();}};list.querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(cb.checked)d2Selected[type].add(cb.value);else d2Selected[type].delete(cb.value);allCb.checked=d2Selected[type].size===0;button.textContent=d2Selected[type].size?d2Selected[type].size+' Selected ▾':'All '+type.toUpperCase()+' ▾';d2Update();});search.oninput=()=>{const s=search.value.toLowerCase();list.querySelectorAll('label').forEach(l=>l.style.display=l.textContent.toLowerCase().includes(s)?'block':'none');};}
-function d2FilteredRows(){const from=document.getElementById('d2-from').value?new Date(document.getElementById('d2-from').value):null;const to=document.getElementById('d2-to').value?new Date(document.getElementById('d2-to').value+'T23:59:59'):null;const tc=d2FindColumn(['TYPE']),bc=d2FindColumn(['BRAND NAME','BRAND']),dc=d2FindColumn(['DEALER NAME','DEALER']),datec=d2FindColumn(['DATE','Invoice Date','Sales Date']);return d2Data.filter(r=>(!d2Selected.fy.size||d2Selected.fy.has(d2FY(r)))&&(!d2Selected.type.size||d2Selected.type.has(String(r[tc]||'').trim()))&&(!d2Selected.brand.size||d2Selected.brand.has(String(r[bc]||'').trim()))&&(!d2Selected.dealer.size||d2Selected.dealer.has(String(r[dc]||'').trim()))&&(!from&&!to||(d2Date(r[datec])&&(!from||d2Date(r[datec])>=from)&&(!to||d2Date(r[datec])<=to))));}
-function d2UpdateKPI(rows){let t=0,s=0,r=0;const ds=new Set();rows.forEach(x=>{t+=targetOf(x);s+=saleOf(x);r+=returnOf(x);if(x['DEALER NAME'])ds.add(x['DEALER NAME']);});const n=s-r;document.getElementById('d2-target').textContent=money(t);document.getElementById('d2-sales').textContent=money(s);document.getElementById('d2-return').textContent=money(r);document.getElementById('d2-net').textContent=money(n);document.getElementById('d2-achieve').textContent=pct(t?n/t*100:0);document.getElementById('d2-return-pct').textContent=pct(s?r/s*100:0);document.getElementById('d2-dealers').textContent=numberFmt(ds.size);}
-function d2BuildTable(rows){const table=document.getElementById('dashboard2-table');const bc=d2FindColumn(['BRAND NAME','BRAND']);let years=[...new Set(rows.map(d2FY).filter(Boolean))].sort((a,b)=>String(b).localeCompare(String(a),undefined,{numeric:true})).slice(0,3);const groups={};rows.forEach(r=>{const brand=String(r[bc]||'').trim(),fy=d2FY(r);if(!brand||!fy)return;const k=brand+'|'+fy;if(!groups[k])groups[k]={target:0,qty:0,net:0};groups[k].target+=targetOf(r);groups[k].qty+=qtySaleOf(r)-qtyReturnOf(r);groups[k].net+=netOf(r);});const brands=[...new Set(rows.map(r=>String(r[bc]||'').trim()).filter(Boolean))].sort();let h='<thead><tr><th rowspan="2">BRAND NAME</th>';years.forEach(y=>h+=`<th colspan="4">${y}</th>`);h+='<th colspan="2">GROWTH %</th></tr><tr>';years.forEach(()=>h+='<th>TARGET</th><th>NET QTY</th><th>NET VALUE</th><th>ACHIEVE %</th>');h+='<th>CY vs PY</th><th>PY vs 2Y AGO</th></tr></thead><tbody>';brands.forEach(b=>{const vals=years.map(y=>groups[b+'|'+y]||{target:0,qty:0,net:0});h+=`<tr><td>${escapeHtml(b)}</td>`;vals.forEach(v=>h+=`<td>${money(v.target)}</td><td>${numberFmt(v.qty)}</td><td>${money(v.net)}</td><td>${pct(v.target?v.net/v.target*100:0)}</td>`);let g1=vals.length>1&&vals[1].net!==0?(vals[0].net-vals[1].net)/Math.abs(vals[1].net)*100:null,g2=vals.length>2&&vals[2].net!==0?(vals[1].net-vals[2].net)/Math.abs(vals[2].net)*100:null;h+=`<td class="${g1==null?'':g1>=0?'growth-positive':'growth-negative'}">${g1==null?'—':pct(g1)+(g1>=0?' ↑':' ↓')}</td><td class="${g2==null?'':g2>=0?'growth-positive':'growth-negative'}">${g2==null?'—':pct(g2)+(g2>=0?' ↑':' ↓')}</td></tr>`;});table.innerHTML=h+'</tbody>';}
-function d2Update(){const rows=d2FilteredRows();d2UpdateKPI(rows);d2BuildTable(rows);}
-async function loadDashboard2(){try{const r=await fetch(CSV_URL+'&t='+Date.now());if(!r.ok)throw Error('load failed');const parsed=parseCSV(await r.text());d2Headers=Object.keys(parsed[0]||{});d2Data=parsed;d2SetupMulti('fy','d2-fy');d2SetupMulti('type','d2-type');d2SetupMulti('brand','d2-brand');d2SetupMulti('dealer','d2-dealer');document.getElementById('d2-from').onchange=d2Update;document.getElementById('d2-to').onchange=d2Update;d2Update();}catch(e){console.error(e);alert('Dashboard 2 ka Google Sheet data load nahi hua.');}}
-function resetDashboard2(){d2Selected={fy:new Set(),type:new Set(),brand:new Set(),dealer:new Set()};document.querySelectorAll('#dashboard2 .multi-menu input[type=checkbox]').forEach(x=>x.checked=false);document.querySelectorAll('#dashboard2 .multi-select button').forEach((b,i)=>b.textContent=['All FY ▾','All TYPE ▾','All BRAND ▾','All DEALER ▾'][i]);document.getElementById('d2-from').value='';document.getElementById('d2-to').value='';d2Update();}
 
 // ============================================================
-// RESET DASHBOARD 1 FILTERS
+// DASHBOARD 1 FILTERS
 // ============================================================
 
-function resetFilters(){
+const d1FilterDefs = {
 
-    Object.keys(d1Selected).forEach(id => {
+    typeFilter: [
+        "TYPE",
+        "TYPE"
+    ],
 
-        d1Selected[id].clear();
+    agentFilter: [
+        "AGENT NAME",
+        "AGENT NAME"
+    ],
+
+    brandFilter: [
+        "BRAND NAME",
+        "BRAND NAME"
+    ],
+
+    dealerFilter: [
+        "DEALER NAME",
+        "DEALER NAME"
+    ],
+
+    fyFilter: [
+        "F YEAR",
+        "F YEAR"
+    ],
+
+    monthFilter: [
+        "MONTH",
+        "MONTH"
+    ],
+
+    yearFilter: [
+        "YEAR",
+        "YEAR"
+    ],
+
+    quarterFilter: [
+        "FY Quarter",
+        "FY QUARTER"
+    ],
+
+    seasonFilter: [
+        "SEASON",
+        "SEASON"
+    ]
+
+};
+
+
+const d1Selected = {};
+
+Object.keys(d1FilterDefs).forEach(
+    key => d1Selected[key] = new Set()
+);
+
+
+// ============================================================
+// TABLE SORT
+// ============================================================
+
+let dealerSortColumn = "dealer";
+
+let dealerSortDirection = "asc";
+
+
+// ============================================================
+// CSV PARSER
+// ============================================================
+
+function parseCSV(text){
+
+    const rows = [];
+
+    let row = [];
+
+    let value = "";
+
+    let quote = false;
+
+
+    for(let i=0;i<text.length;i++){
+
+        const c = text[i];
+
+        const next = text[i+1];
+
+
+        if(c === '"' && quote && next === '"'){
+
+            value += '"';
+
+            i++;
+
+        }
+
+        else if(c === '"'){
+
+            quote = !quote;
+
+        }
+
+        else if(c === ',' && !quote){
+
+            row.push(value.trim());
+
+            value = "";
+
+        }
+
+        else if(
+            (c === '\n' || c === '\r')
+            && !quote
+        ){
+
+            if(c === '\r' && next === '\n'){
+                i++;
+            }
+
+            row.push(value.trim());
+
+            value = "";
+
+
+            if(row.some(x => x !== "")){
+
+                rows.push(row);
+
+            }
+
+            row = [];
+
+        }
+
+        else{
+
+            value += c;
+
+        }
+
+    }
+
+
+    if(value !== "" || row.length){
+
+        row.push(value.trim());
+
+        if(row.some(x => x !== "")){
+
+            rows.push(row);
+
+        }
+
+    }
+
+
+    if(!rows.length){
+
+        return [];
+
+    }
+
+
+    const headers =
+        rows[0].map(x => x.trim());
+
+
+    return rows.slice(1).map(r => {
+
+        const obj = {};
+
+        headers.forEach(
+            (h,i) => obj[h] = r[i] || ""
+        );
+
+        return obj;
 
     });
 
-    document.querySelectorAll('#d1Filters .filter-box').forEach(box => {
+}
 
-        const id = box.id;
 
-        const def = d1FilterDefs[id];
+// ============================================================
+// NUMBER
+// ============================================================
 
-        if(!def) return;
+function num(v){
 
-        const label = def[1];
+    if(v == null){
 
-        const allCb = box.querySelector('.filter-all input');
+        return 0;
 
-        if(allCb){
-            allCb.checked = true;
+    }
+
+
+    const n = parseFloat(
+
+        String(v)
+
+        .replace(/₹/g,'')
+
+        .replace(/,/g,'')
+
+        .replace(/\s/g,'')
+
+    );
+
+
+    return isNaN(n) ? 0 : n;
+
+}
+
+
+// ============================================================
+// MONEY
+// ============================================================
+
+function money(v){
+
+    v = Number(v) || 0;
+
+
+    if(v >= 1e7){
+
+        return "₹ " +
+            (v / 1e7).toFixed(2) +
+            " Cr";
+
+    }
+
+
+    if(v >= 1e5){
+
+        return "₹ " +
+            (v / 1e5).toFixed(2) +
+            " L";
+
+    }
+
+
+    return "₹ " +
+        v.toLocaleString(
+            "en-IN",
+            {
+                maximumFractionDigits:0
+            }
+        );
+
+}
+
+
+// ============================================================
+// NUMBER FORMAT
+// ============================================================
+
+function numberFmt(v){
+
+    return Number(v || 0).toLocaleString(
+        "en-IN",
+        {
+            maximumFractionDigits:0
+        }
+    );
+
+}
+
+
+// ============================================================
+// PERCENTAGE
+// ============================================================
+
+function pct(v){
+
+    return (
+        Number(v) || 0
+    ).toFixed(2) + "%";
+
+}
+
+
+// ============================================================
+// NORMALIZE
+// ============================================================
+
+function norm(v){
+
+    return String(v || "")
+        .trim()
+        .toUpperCase();
+
+}
+
+
+// ============================================================
+// DATA TYPE
+// ============================================================
+
+function dataType(row){
+
+    const s = norm(row["DATA"]);
+
+
+    if(s.includes("TARGET")){
+
+        return "TARGET";
+
+    }
+
+
+    if(s.includes("RETURN")){
+
+        return "RETURN";
+
+    }
+
+
+    if(s.includes("SALE")){
+
+        return "SALE";
+
+    }
+
+
+    return "SALE";
+
+}
+
+
+// ============================================================
+// VALUES
+// ============================================================
+
+function targetOf(row){
+
+    return dataType(row) === "TARGET"
+        ? num(row["VALUE"])
+        : 0;
+
+}
+
+
+function saleOf(row){
+
+    return dataType(row) === "SALE"
+        ? num(row["VALUE"])
+        : 0;
+
+}
+
+
+function returnOf(row){
+
+    return dataType(row) === "RETURN"
+        ? Math.abs(num(row["VALUE"]))
+        : 0;
+
+}
+
+
+function qtySaleOf(row){
+
+    return dataType(row) === "SALE"
+        ? num(row["QTY"])
+        : 0;
+
+}
+
+
+function qtyReturnOf(row){
+
+    return dataType(row) === "RETURN"
+        ? Math.abs(num(row["QTY"]))
+        : 0;
+
+}
+
+
+function netOf(row){
+
+    return saleOf(row) -
+        returnOf(row);
+
+}
+
+
+// ============================================================
+// ESCAPE HTML
+// ============================================================
+
+function escapeHtml(s){
+
+    return String(s)
+
+        .replace(/&/g,"&amp;")
+
+        .replace(/</g,"&lt;")
+
+        .replace(/>/g,"&gt;")
+
+        .replace(/"/g,"&quot;");
+
+}
+
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+
+async function loadData(){
+
+    try{
+
+        const response =
+            await fetch(
+                CSV_URL +
+                "&t=" +
+                Date.now()
+            );
+
+
+        if(!response.ok){
+
+            throw new Error(
+                "Google Sheet load failed"
+            );
+
         }
 
-        box.querySelectorAll(
-            '.filter-dropdown input[type="checkbox"]'
-        ).forEach(cb => {
 
-            if(!cb.classList.contains('select-all')){
-                cb.checked = false;
+        const text =
+            await response.text();
+
+
+        allData =
+            parseCSV(text);
+
+
+        if(!allData.length){
+
+            throw new Error(
+                "No data found"
+            );
+
+        }
+
+
+        setupD1Filters();
+
+        updateDashboard1();
+
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        alert(
+            "Google Sheet se data load nahi ho pa raha hai."
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// SETUP DASHBOARD 1 FILTERS
+// ============================================================
+
+function setupD1Filters(){
+
+    Object.entries(d1FilterDefs).forEach(
+        ([id,[column,label]]) => {
+
+
+        const box =
+            document.getElementById(
+                id + "Box"
+            );
+
+
+        if(!box){
+
+            return;
+
+        }
+
+
+        const options =
+            box.querySelector(
+                "#" +
+                id +
+                "Options"
+            );
+
+
+        if(!options){
+
+            return;
+
+        }
+
+
+        options.innerHTML = "";
+
+
+        const values = [
+
+            ...new Set(
+
+                allData
+
+                .map(
+                    row =>
+                    String(
+                        row[column] || ""
+                    ).trim()
+                )
+
+                .filter(Boolean)
+
+            )
+
+        ];
+
+
+        values.sort(
+            (a,b) =>
+            a.localeCompare(
+                b,
+                undefined,
+                {
+                    numeric:true
+                }
+            )
+        );
+
+
+        values.forEach(value => {
+
+            const labelEl =
+                document.createElement(
+                    "label"
+                );
+
+
+            labelEl.className =
+                "filter-option";
+
+
+            labelEl.innerHTML = `
+
+                <input
+                    type="checkbox"
+                    value="${escapeHtml(value)}"
+                >
+
+                <span>
+                    ${escapeHtml(value)}
+                </span>
+
+            `;
+
+
+            options.appendChild(
+                labelEl
+            );
+
+
+            const checkbox =
+                labelEl.querySelector(
+                    "input"
+                );
+
+
+            checkbox.addEventListener(
+                "change",
+                function(){
+
+                    if(this.checked){
+
+                        d1Selected[id]
+                            .add(this.value);
+
+                    }
+
+                    else{
+
+                        d1Selected[id]
+                            .delete(this.value);
+
+                    }
+
+
+                    updateD1Button(
+                        id,
+                        label
+                    );
+
+
+                    updateDashboard1();
+
+                }
+            );
+
+        });
+
+
+        const allCheckbox =
+            box.querySelector(
+                ".select-all"
+            );
+
+
+        allCheckbox.checked = true;
+
+
+        allCheckbox.addEventListener(
+            "change",
+            function(){
+
+                if(this.checked){
+
+                    d1Selected[id]
+                        .clear();
+
+
+                    options
+                        .querySelectorAll(
+                            "input"
+                        )
+                        .forEach(
+                            cb =>
+                            cb.checked = false
+                        );
+
+                }
+
+                else{
+
+                    options
+                        .querySelectorAll(
+                            "input"
+                        )
+                        .forEach(
+                            cb =>
+                            cb.checked = true
+                        );
+
+
+                    values.forEach(
+                        value =>
+                        d1Selected[id]
+                            .add(value)
+                    );
+
+                }
+
+
+                updateD1Button(
+                    id,
+                    label
+                );
+
+
+                updateDashboard1();
+
+            }
+        );
+
+    });
+
+}
+
+
+// ============================================================
+// FILTER SEARCH
+// ============================================================
+
+function searchFilter(
+    boxId,
+    searchValue
+){
+
+    const box =
+        document.getElementById(
+            boxId
+        );
+
+
+    if(!box){
+
+        return;
+
+    }
+
+
+    const search =
+        searchValue.toLowerCase();
+
+
+    box.querySelectorAll(
+        ".filter-option:not(.filter-all)"
+    )
+    .forEach(option => {
+
+        const text =
+            option.textContent
+                .toLowerCase();
+
+
+        option.style.display =
+            text.includes(search)
+            ? "flex"
+            : "none";
+
+    });
+
+}
+
+
+// ============================================================
+// TOGGLE FILTER
+// ============================================================
+
+function toggleD1Filter(id){
+
+    const target =
+        document.getElementById(id);
+
+
+    document
+        .querySelectorAll(
+            ".filter-box"
+        )
+        .forEach(box => {
+
+            if(box !== target){
+
+                box.classList.remove(
+                    "open"
+                );
+
             }
 
         });
 
-        updateD1Button(id,label);
+
+    target.classList.toggle(
+        "open"
+    );
+
+}
+
+
+// ============================================================
+// CLOSE FILTER
+// ============================================================
+
+document.addEventListener(
+    "click",
+    function(event){
+
+        if(
+            !event.target.closest(
+                ".filter-box"
+            )
+        ){
+
+            document
+                .querySelectorAll(
+                    ".filter-box"
+                )
+                .forEach(
+                    box =>
+                    box.classList.remove(
+                        "open"
+                    )
+                );
+
+        }
+
+    }
+);
+
+
+// ============================================================
+// FILTER BUTTON TEXT
+// ============================================================
+
+function updateD1Button(
+    id,
+    label
+){
+
+    const text =
+        document.querySelector(
+            "#" +
+            id +
+            "Box .filter-button span:first-child"
+        );
+
+
+    if(!text){
+
+        return;
+
+    }
+
+
+    const count =
+        d1Selected[id].size;
+
+
+    text.textContent =
+        count
+        ? count + " Selected"
+        : "All " + label;
+
+}
+
+
+// ============================================================
+// FILTER DATA
+// ============================================================
+
+function getD1Data(){
+
+    return allData.filter(row => {
+
+        return Object.entries(
+            d1FilterDefs
+        ).every(
+            ([id,[column]]) => {
+
+                const value =
+                    String(
+                        row[column] || ""
+                    ).trim();
+
+
+                return (
+                    !d1Selected[id].size
+                    ||
+                    d1Selected[id]
+                        .has(value)
+                );
+
+            }
+        );
 
     });
 
-    document.querySelectorAll('#d1Filters .filter-search').forEach(input => {
+}
 
-        input.value = '';
+
+// ============================================================
+// DASHBOARD 1 UPDATE
+// ============================================================
+
+function updateDashboard1(){
+
+    const data =
+        getD1Data();
+
+
+    updateD1KPI(data);
+
+    updateDealerStatus(data);
+
+    updateBrandChart(data);
+
+    updateMonthChart(data);
+
+    updateAgentChart(data);
+
+    updateDealerTable(data);
+
+}
+
+
+// ============================================================
+// KPI
+// ============================================================
+
+function updateD1KPI(data){
+
+    let target = 0;
+
+    let sale = 0;
+
+    let ret = 0;
+
+
+    data.forEach(row => {
+
+        target += targetOf(row);
+
+        sale += saleOf(row);
+
+        ret += returnOf(row);
 
     });
 
-    document.querySelectorAll('#d1Filters .filter-option').forEach(option => {
 
-        option.style.display = 'flex';
+    const net =
+        sale - ret;
+
+
+    document.getElementById(
+        "targetValue"
+    ).textContent =
+        money(target);
+
+
+    document.getElementById(
+        "saleValue"
+    ).textContent =
+        money(sale);
+
+
+    document.getElementById(
+        "returnValue"
+    ).textContent =
+        money(ret);
+
+
+    document.getElementById(
+        "netSaleValue"
+    ).textContent =
+        money(net);
+
+
+    document.getElementById(
+        "achievePercent"
+    ).textContent =
+        pct(
+            target
+            ? net / target * 100
+            : 0
+        );
+
+
+    document.getElementById(
+        "returnPercent"
+    ).textContent =
+        pct(
+            sale
+            ? ret / sale * 100
+            : 0
+        );
+
+}
+
+
+// ============================================================
+// DEALER STATUS
+// ============================================================
+
+function updateDealerStatus(data){
+
+    const dealers = {};
+
+
+    data.forEach(row => {
+
+        const dealer =
+            String(
+                row["DEALER NAME"] || ""
+            ).trim();
+
+
+        if(!dealer){
+
+            return;
+
+        }
+
+
+        if(!dealers[dealer]){
+
+            dealers[dealer] = {
+
+                target:0,
+
+                sale:0,
+
+                return:0
+
+            };
+
+        }
+
+
+        dealers[dealer].target +=
+            targetOf(row);
+
+
+        dealers[dealer].sale +=
+            saleOf(row);
+
+
+        dealers[dealer].return +=
+            returnOf(row);
 
     });
+
+
+    let targeted = 0;
+
+    let active = 0;
+
+    let newDealer = 0;
+
+    let nonActive = 0;
+
+
+    Object.values(dealers).forEach(d => {
+
+        const net =
+            d.sale - d.return;
+
+
+        if(d.target > 0){
+
+            targeted++;
+
+        }
+
+
+        if(net > 0){
+
+            active++;
+
+        }
+
+        else{
+
+            nonActive++;
+
+        }
+
+
+        if(
+            d.target === 0 &&
+            net > 0
+        ){
+
+            newDealer++;
+
+        }
+
+    });
+
+
+    document.getElementById(
+        "targetedDealer"
+    ).textContent =
+        numberFmt(targeted);
+
+
+    document.getElementById(
+        "activeDealer"
+    ).textContent =
+        numberFmt(active);
+
+
+    document.getElementById(
+        "newDealer"
+    ).textContent =
+        numberFmt(newDealer);
+
+
+    document.getElementById(
+        "nonActiveDealer"
+    ).textContent =
+        numberFmt(nonActive);
+
+}
+
+
+// ============================================================
+// CHART OPTIONS
+// ============================================================
+
+function chartOptions(){
+
+    return {
+
+        responsive:true,
+
+        maintainAspectRatio:false,
+
+        plugins:{
+
+            legend:{
+
+                display:true,
+
+                position:"top"
+
+            },
+
+            tooltip:{
+
+                callbacks:{
+
+                    label:
+                    context =>
+                    money(
+                        context.raw
+                    )
+
+                }
+
+            }
+
+        },
+
+        scales:{
+
+            y:{
+
+                beginAtZero:true,
+
+                ticks:{
+
+                    callback:
+                    value =>
+                    money(value)
+
+                }
+
+            }
+
+        }
+
+    };
+
+}
+
+
+// ============================================================
+// CREATE CHART
+// ============================================================
+
+function makeChart(
+    id,
+    type,
+    labels,
+    datasets,
+    options = {}
+){
+
+    const canvas =
+        document.getElementById(id);
+
+
+    if(!canvas){
+
+        return;
+
+    }
+
+
+    if(charts[id]){
+
+        charts[id].destroy();
+
+    }
+
+
+    charts[id] =
+        new Chart(
+
+            canvas,
+
+            {
+
+                type:type,
+
+                data:{
+
+                    labels:labels,
+
+                    datasets:datasets
+
+                },
+
+                options:{
+
+                    ...chartOptions(),
+
+                    ...options
+
+                }
+
+            }
+
+        );
+
+}
+
+
+// ============================================================
+// GROUP
+// ============================================================
+
+function grouped(
+    data,
+    column
+){
+
+    const map = {};
+
+
+    data.forEach(row => {
+
+        const key =
+            row[column] || "Blank";
+
+
+        if(!map[key]){
+
+            map[key] = {
+
+                target:0,
+
+                net:0
+
+            };
+
+        }
+
+
+        map[key].target +=
+            targetOf(row);
+
+
+        map[key].net +=
+            netOf(row);
+
+    });
+
+
+    return map;
+
+}
+
+
+// ============================================================
+// BRAND CHART
+// ============================================================
+
+function updateBrandChart(data){
+
+    const group =
+        grouped(
+            data,
+            "BRAND NAME"
+        );
+
+
+    const labels =
+        Object.keys(group)
+        .sort(
+            (a,b) =>
+            group[b].net -
+            group[a].net
+        );
+
+
+    const inner =
+        document.querySelector(
+            ".brand-chart-inner"
+        );
+
+
+    if(inner){
+
+        inner.style.minWidth =
+            Math.max(
+                650,
+                labels.length * 75
+            ) + "px";
+
+    }
+
+
+    makeChart(
+
+        "brandChart",
+
+        "bar",
+
+        labels,
+
+        [
+
+            {
+
+                label:"Target",
+
+                data:
+                    labels.map(
+                        x =>
+                        group[x].target
+                    ),
+
+                borderWidth:1,
+
+                borderRadius:3
+
+            },
+
+            {
+
+                label:"Net Sale",
+
+                data:
+                    labels.map(
+                        x =>
+                        group[x].net
+                    ),
+
+                borderWidth:1,
+
+                borderRadius:3
+
+            }
+
+        ]
+
+    );
+
+}
+
+
+// ============================================================
+// MONTH
+// ============================================================
+
+function monthOrder(){
+
+    return [
+
+        "Apr",
+
+        "May",
+
+        "Jun",
+
+        "Jul",
+
+        "Aug",
+
+        "Sep",
+
+        "Oct",
+
+        "Nov",
+
+        "Dec",
+
+        "Jan",
+
+        "Feb",
+
+        "Mar"
+
+    ];
+
+}
+
+
+// ============================================================
+// MONTH CHART
+// ============================================================
+
+function updateMonthChart(data){
+
+    const group = {};
+
+
+    data.forEach(row => {
+
+        const key =
+            row["MONTH"] ||
+            "Blank";
+
+
+        if(!group[key]){
+
+            group[key] = {
+
+                target:0,
+
+                net:0
+
+            };
+
+        }
+
+
+        group[key].target +=
+            targetOf(row);
+
+
+        group[key].net +=
+            netOf(row);
+
+    });
+
+
+    const labels = [
+
+        ...monthOrder()
+            .filter(
+                m => group[m]
+            ),
+
+        ...Object.keys(group)
+            .filter(
+                m =>
+                !monthOrder()
+                    .includes(m)
+            )
+
+    ];
+
+
+    makeChart(
+
+        "monthChart",
+
+        "line",
+
+        labels,
+
+        [
+
+            {
+
+                label:"Net Sale",
+
+                data:
+                    labels.map(
+                        x =>
+                        group[x].net
+                    ),
+
+                borderWidth:3,
+
+                tension:.3,
+
+                fill:false
+
+            },
+
+            {
+
+                label:"Target",
+
+                data:
+                    labels.map(
+                        x =>
+                        group[x].target
+                    ),
+
+                borderWidth:3,
+
+                borderDash:[
+                    8,
+                    5
+                ],
+
+                tension:.3,
+
+                fill:false
+
+            }
+
+        ]
+
+    );
+
+}
+
+
+// ============================================================
+// AGENT CHART
+// ============================================================
+
+function updateAgentChart(data){
+
+    const group =
+        grouped(
+            data,
+            "AGENT NAME"
+        );
+
+
+    const labels =
+        Object.keys(group)
+        .sort(
+            (a,b) =>
+            group[b].net -
+            group[a].net
+        );
+
+
+    makeChart(
+
+        "agentChart",
+
+        "bar",
+
+        labels,
+
+        [
+
+            {
+
+                label:"Target",
+
+                data:
+                    labels.map(
+                        x =>
+                        group[x].target
+                    ),
+
+                borderWidth:1,
+
+                borderRadius:3
+
+            },
+
+            {
+
+                label:"Net Sale",
+
+                data:
+                    labels.map(
+                        x =>
+                        group[x].net
+                    ),
+
+                borderWidth:1,
+
+                borderRadius:3
+
+            }
+
+        ]
+
+    );
+
+}
+
+
+// ============================================================
+// DEALER TABLE - DATA
+// ============================================================
+
+function getDealerTableData(rows){
+
+    const dealerColumn =
+        "DEALER NAME";
+
+
+    const groups = {};
+
+
+    rows.forEach(row => {
+
+        const dealer =
+            String(
+                row[dealerColumn] || ""
+            ).trim();
+
+
+        const fy =
+            String(
+                row["F YEAR"] || ""
+            ).trim();
+
+
+        if(!dealer || !fy){
+
+            return;
+
+        }
+
+
+        const key =
+            dealer + "|" + fy;
+
+
+        if(!groups[key]){
+
+            groups[key] = {
+
+                target:0,
+
+                qty:0,
+
+                net:0
+
+            };
+
+        }
+
+
+        groups[key].target +=
+            targetOf(row);
+
+
+        groups[key].qty +=
+            qtySaleOf(row) -
+            qtyReturnOf(row);
+
+
+        groups[key].net +=
+            netOf(row);
+
+    });
+
+
+    return groups;
+
+}
+
+
+// ============================================================
+// DEALER TABLE
+// ============================================================
+
+function updateDealerTable(rows){
+
+    const table =
+        document.getElementById(
+            "dealer-dashboard-table"
+        );
+
+
+    if(!table){
+
+        return;
+
+    }
+
+
+    const groups =
+        getDealerTableData(rows);
+
+
+    let years = [
+
+        ...new Set(
+
+            rows
+
+            .map(
+                r =>
+                String(
+                    r["F YEAR"] || ""
+                ).trim()
+            )
+
+            .filter(Boolean)
+
+        )
+
+    ];
+
+
+    years.sort(
+        (a,b) =>
+        String(b).localeCompare(
+            String(a),
+            undefined,
+            {
+                numeric:true
+            }
+        )
+    );
+
+
+    years =
+        years.slice(0,3);
+
+
+    const dealerSet =
+        new Set();
+
+
+    rows.forEach(row => {
+
+        const dealer =
+            String(
+                row["DEALER NAME"] || ""
+            ).trim();
+
+
+        if(dealer){
+
+            dealerSet.add(dealer);
+
+        }
+
+    });
+
+
+    let dealers =
+        [...dealerSet];
+
+
+    // ========================================================
+    // SORT DEALERS
+    // ========================================================
+
+    dealers.sort(
+        (a,b) =>
+        compareDealerRows(
+            a,
+            b,
+            groups,
+            years
+        )
+    );
+
+
+    // ========================================================
+    // HEADER
+    // ========================================================
+
+    let html = `
+
+    <thead>
+
+        <tr>
+
+            <th
+                rowspan="2"
+                onclick="sortDealerTable('dealer')"
+            >
+
+                DEALER NAME
+
+                ${sortIcon("dealer")}
+
+            </th>
+
+    `;
+
+
+    years.forEach(year => {
+
+        html += `
+
+            <th colspan="4">
+
+                ${escapeHtml(year)}
+
+            </th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th colspan="2">
+
+                GROWTH %
+
+            </th>
+
+        </tr>
+
+        <tr>
+
+    `;
+
+
+    years.forEach(year => {
+
+        html += `
+
+            <th
+                onclick="sortDealerTable('${year}-target')"
+            >
+                TARGET
+                ${sortIcon(year+"-target")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('${year}-qty')"
+            >
+                NET QTY
+                ${sortIcon(year+"-qty")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('${year}-net')"
+            >
+                NET VALUE
+                ${sortIcon(year+"-net")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('${year}-achieve')"
+            >
+                ACHIEVE %
+                ${sortIcon(year+"-achieve")}
+            </th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th
+                onclick="sortDealerTable('growth1')"
+            >
+                CY vs PY
+                ${sortIcon("growth1")}
+            </th>
+
+            <th
+                onclick="sortDealerTable('growth2')"
+            >
+                PY vs 2Y AGO
+                ${sortIcon("growth2")}
+            </th>
+
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+    `;
+
+
+    // ========================================================
+    // ROWS
+    // ========================================================
+
+    dealers.forEach(dealer => {
+
+        const values =
+            years.map(
+                year =>
+                groups[
+                    dealer +
+                    "|" +
+                    year
+                ] || {
+
+                    target:0,
+
+                    qty:0,
+
+                    net:0
+
+                }
+            );
+
+
+        html += `
+
+        <tr>
+
+            <td>
+
+                ${escapeHtml(dealer)}
+
+            </td>
+
+        `;
+
+
+        values.forEach(value => {
+
+            const achievement =
+                value.target
+                ? value.net /
+                    value.target *
+                    100
+                : 0;
+
+
+            html += `
+
+                <td>
+                    ${money(value.target)}
+                </td>
+
+                <td>
+                    ${numberFmt(value.qty)}
+                </td>
+
+                <td>
+                    ${money(value.net)}
+                </td>
+
+                <td>
+                    ${pct(achievement)}
+                </td>
+
+            `;
+
+        });
+
+
+        const g1 =
+            values.length > 1 &&
+            values[1].net !== 0
+
+            ?
+
+            (
+                (
+                    values[0].net -
+                    values[1].net
+                )
+                /
+                Math.abs(
+                    values[1].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        const g2 =
+            values.length > 2 &&
+            values[2].net !== 0
+
+            ?
+
+            (
+                (
+                    values[1].net -
+                    values[2].net
+                )
+                /
+                Math.abs(
+                    values[2].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        html += `
+
+            <td
+                class="${
+                    g1 == null
+                    ? ""
+                    : g1 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g1 == null
+                    ? "—"
+                    : pct(g1) +
+                      (
+                        g1 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+
+            <td
+                class="${
+                    g2 == null
+                    ? ""
+                    : g2 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g2 == null
+                    ? "—"
+                    : pct(g2) +
+                      (
+                        g2 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
+
+    // ========================================================
+    // TOTAL ROW
+    // ========================================================
+
+    const totals =
+        years.map(
+            year => {
+
+                let target = 0;
+
+                let qty = 0;
+
+                let net = 0;
+
+
+                rows.forEach(row => {
+
+                    if(
+                        String(
+                            row["F YEAR"] || ""
+                        ).trim() === year
+                    ){
+
+                        target +=
+                            targetOf(row);
+
+                        qty +=
+                            qtySaleOf(row) -
+                            qtyReturnOf(row);
+
+                        net +=
+                            netOf(row);
+
+                    }
+
+                });
+
+
+                return {
+
+                    target,
+
+                    qty,
+
+                    net
+
+                };
+
+            }
+        );
+
+
+    html += `
+
+        <tr class="total-row">
+
+            <td>TOTAL</td>
+
+    `;
+
+
+    totals.forEach(value => {
+
+        html += `
+
+            <td>
+                ${money(value.target)}
+            </td>
+
+            <td>
+                ${numberFmt(value.qty)}
+            </td>
+
+            <td>
+                ${money(value.net)}
+            </td>
+
+            <td>
+                ${
+                    pct(
+                        value.target
+                        ? value.net /
+                          value.target *
+                          100
+                        : 0
+                    )
+                }
+            </td>
+
+        `;
+
+    });
+
+
+    const totalG1 =
+        totals.length > 1 &&
+        totals[1].net !== 0
+
+        ?
+
+        (
+            (
+                totals[0].net -
+                totals[1].net
+            )
+            /
+            Math.abs(
+                totals[1].net
+            )
+        ) * 100
+
+        :
+
+        null;
+
+
+    const totalG2 =
+        totals.length > 2 &&
+        totals[2].net !== 0
+
+        ?
+
+        (
+            (
+                totals[1].net -
+                totals[2].net
+            )
+            /
+            Math.abs(
+                totals[2].net
+            )
+        ) * 100
+
+        :
+
+        null;
+
+
+    html += `
+
+            <td
+                class="${
+                    totalG1 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    totalG1 == null
+                    ? "—"
+                    : pct(totalG1) +
+                      (
+                        totalG1 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+
+            <td
+                class="${
+                    totalG2 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    totalG2 == null
+                    ? "—"
+                    : pct(totalG2) +
+                      (
+                        totalG2 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+        </tr>
+
+    `;
+
+
+    table.innerHTML =
+        html +
+        "</tbody>";
+
+}
+
+
+// ============================================================
+// SORT ICON
+// ============================================================
+
+function sortIcon(column){
+
+    if(
+        dealerSortColumn !== column
+    ){
+
+        return `<span class="sort-icon">↕</span>`;
+
+    }
+
+
+    return `
+
+        <span class="sort-icon sort-active">
+
+            ${
+                dealerSortDirection === "asc"
+                ? "↑"
+                : "↓"
+            }
+
+        </span>
+
+    `;
+
+}
+
+
+// ============================================================
+// GET SORT VALUE
+// ============================================================
+
+function getDealerSortValue(
+    dealer,
+    column,
+    groups,
+    years
+){
+
+    if(column === "dealer"){
+
+        return dealer.toUpperCase();
+
+    }
+
+
+    if(
+        column === "growth1" ||
+        column === "growth2"
+    ){
+
+        const values =
+            years.map(
+                year =>
+                groups[
+                    dealer +
+                    "|" +
+                    year
+                ] || {
+
+                    target:0,
+                    qty:0,
+                    net:0
+
+                }
+            );
+
+
+        if(
+            column === "growth1"
+        ){
+
+            if(
+                values.length < 2 ||
+                values[1].net === 0
+            ){
+
+                return 0;
+
+            }
+
+
+            return (
+                (
+                    values[0].net -
+                    values[1].net
+                )
+                /
+                Math.abs(
+                    values[1].net
+                )
+            ) * 100;
+
+        }
+
+
+        if(
+            values.length < 3 ||
+            values[2].net === 0
+        ){
+
+            return 0;
+
+        }
+
+
+        return (
+            (
+                values[1].net -
+                values[2].net
+            )
+            /
+            Math.abs(
+                values[2].net
+            )
+        ) * 100;
+
+    }
+
+
+    const parts =
+        column.split("-");
+
+
+    const year =
+        parts[0];
+
+
+    const metric =
+        parts[1];
+
+
+    const value =
+        groups[
+            dealer +
+            "|" +
+            year
+        ] || {
+
+            target:0,
+
+            qty:0,
+
+            net:0
+
+        };
+
+
+    if(metric === "achieve"){
+
+        return value.target
+            ? value.net /
+              value.target *
+              100
+            : 0;
+
+    }
+
+
+    return value[metric] || 0;
+
+}
+
+
+// ============================================================
+// COMPARE
+// ============================================================
+
+function compareDealerRows(
+    a,
+    b,
+    groups,
+    years
+){
+
+    const av =
+        getDealerSortValue(
+            a,
+            dealerSortColumn,
+            groups,
+            years
+        );
+
+
+    const bv =
+        getDealerSortValue(
+            b,
+            dealerSortColumn,
+            groups,
+            years
+        );
+
+
+    let result;
+
+
+    if(
+        typeof av === "string"
+    ){
+
+        result =
+            av.localeCompare(
+                bv,
+                undefined,
+                {
+                    numeric:true
+                }
+            );
+
+    }
+
+    else{
+
+        result =
+            Number(av) -
+            Number(bv);
+
+    }
+
+
+    return dealerSortDirection === "asc"
+        ? result
+        : -result;
+
+}
+
+
+// ============================================================
+// SORT TABLE
+// ============================================================
+
+function sortDealerTable(column){
+
+    if(
+        dealerSortColumn === column
+    ){
+
+        dealerSortDirection =
+            dealerSortDirection === "asc"
+            ? "desc"
+            : "asc";
+
+    }
+
+    else{
+
+        dealerSortColumn = column;
+
+        dealerSortDirection = "asc";
+
+    }
+
+
+    updateDealerTable(
+        getD1Data()
+    );
+
+}
+
+
+// ============================================================
+// RESET FILTERS
+// ============================================================
+
+function resetFilters(){
+
+    Object.keys(
+        d1Selected
+    ).forEach(
+        key =>
+        d1Selected[key].clear()
+    );
+
+
+    document
+        .querySelectorAll(
+            "#dashboard1 .filter-option input[type=checkbox]"
+        )
+        .forEach(
+            checkbox =>
+            checkbox.checked = false
+        );
+
+
+    document
+        .querySelectorAll(
+            "#dashboard1 .select-all"
+        )
+        .forEach(
+            checkbox =>
+            checkbox.checked = true
+        );
+
+
+    Object.entries(
+        d1FilterDefs
+    ).forEach(
+        ([id,[column,label]]) =>
+        updateD1Button(
+            id,
+            label
+        )
+    );
+
+
+    document
+        .querySelectorAll(
+            "#dashboard1 .filter-search"
+        )
+        .forEach(
+            input =>
+            input.value = ""
+        );
+
 
     updateDashboard1();
 
 }
+
+
+// ============================================================
+// DASHBOARD 2
+// ============================================================
+
+let d2Data = [];
+
+let d2Headers = [];
+
+
+let d2Selected = {
+
+    fy:new Set(),
+
+    type:new Set(),
+
+    brand:new Set(),
+
+    dealer:new Set()
+
+};
+
+
+// ============================================================
+// DASHBOARD SWITCH
+// ============================================================
+
+function showDashboard(n){
+
+    document.getElementById(
+        "dashboard1"
+    ).style.display =
+        n === 1
+        ? "block"
+        : "none";
+
+
+    document.getElementById(
+        "dashboard2"
+    ).style.display =
+        n === 2
+        ? "block"
+        : "none";
+
+
+    document
+        .querySelectorAll(
+            ".dash-tab"
+        )
+        .forEach(
+            (button,index) =>
+            button.classList.toggle(
+                "active",
+                index === n - 1
+            )
+        );
+
+
+    if(
+        n === 2 &&
+        !d2Data.length
+    ){
+
+        loadDashboard2();
+
+    }
+
+}
+
+
+// ============================================================
+// MULTI TOGGLE
+// ============================================================
+
+function toggleMulti(id){
+
+    const target =
+        document.getElementById(id);
+
+
+    document
+        .querySelectorAll(
+            ".multi-select"
+        )
+        .forEach(
+            box => {
+
+                if(box !== target){
+
+                    box.classList.remove(
+                        "open"
+                    );
+
+                }
+
+            }
+        );
+
+
+    target.classList.toggle(
+        "open"
+    );
+
+}
+
+
+document.addEventListener(
+    "click",
+    function(event){
+
+        if(
+            !event.target.closest(
+                ".multi-select"
+            )
+        ){
+
+            document
+                .querySelectorAll(
+                    ".multi-select"
+                )
+                .forEach(
+                    box =>
+                    box.classList.remove(
+                        "open"
+                    )
+                );
+
+        }
+
+    }
+);
+
+
+// ============================================================
+// FIND COLUMN
+// ============================================================
+
+function d2FindColumn(names){
+
+    const headers =
+        d2Headers.map(
+            h =>
+            norm(h)
+            .replace(
+                /[^A-Z0-9]/g,
+                ""
+            )
+        );
+
+
+    for(
+        const name of names
+    ){
+
+        const index =
+            headers.indexOf(
+                norm(name)
+                .replace(
+                    /[^A-Z0-9]/g,
+                    ""
+                )
+            );
+
+
+        if(index >= 0){
+
+            return d2Headers[index];
+
+        }
+
+    }
+
+
+    return "";
+
+}
+
+
+// ============================================================
+// DATE
+// ============================================================
+
+function d2Date(value){
+
+    if(!value){
+
+        return null;
+
+    }
+
+
+    const s =
+        String(value).trim();
+
+
+    const match =
+        s.match(
+            /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/
+        );
+
+
+    const date =
+        match
+
+        ?
+
+        new Date(
+            +match[3],
+            +match[2] - 1,
+            +match[1]
+        )
+
+        :
+
+        new Date(s);
+
+
+    return isNaN(date)
+        ? null
+        : date;
+
+}
+
+
+// ============================================================
+// FY
+// ============================================================
+
+function d2FY(row){
+
+    const column =
+        d2FindColumn(
+            [
+                "F YEAR",
+                "FY",
+                "Financial Year"
+            ]
+        );
+
+
+    if(
+        column &&
+        row[column]
+    ){
+
+        return String(
+            row[column]
+        ).trim();
+
+    }
+
+
+    const dateColumn =
+        d2FindColumn(
+            [
+                "DATE",
+                "Invoice Date",
+                "Sales Date"
+            ]
+        );
+
+
+    const date =
+        d2Date(
+            row[dateColumn]
+        );
+
+
+    if(!date){
+
+        return "";
+
+    }
+
+
+    const year =
+        date.getFullYear();
+
+
+    const month =
+        date.getMonth() + 1;
+
+
+    return month >= 4
+
+        ?
+
+        year +
+        "-" +
+        String(
+            year + 1
+        ).slice(-2)
+
+        :
+
+        (
+            year - 1
+        ) +
+        "-" +
+        String(year).slice(-2);
+
+}
+
+
+// ============================================================
+// D2 VALUES
+// ============================================================
+
+function d2Values(type){
+
+    if(type === "fy"){
+
+        return [
+
+            ...new Set(
+                d2Data
+                .map(d2FY)
+                .filter(Boolean)
+            )
+
+        ].sort().reverse();
+
+    }
+
+
+    const map = {
+
+        type:[
+            "TYPE"
+        ],
+
+        brand:[
+            "BRAND NAME",
+            "BRAND"
+        ],
+
+        dealer:[
+            "DEALER NAME",
+            "DEALER"
+        ]
+
+    };
+
+
+    const column =
+        d2FindColumn(
+            map[type]
+        );
+
+
+    return column
+
+        ?
+
+        [
+
+            ...new Set(
+
+                d2Data
+
+                .map(
+                    row =>
+                    String(
+                        row[column] || ""
+                    ).trim()
+                )
+
+                .filter(Boolean)
+
+            )
+
+        ].sort()
+
+        :
+
+        [];
+
+}
+
+
+// ============================================================
+// D2 MULTI SELECT
+// ============================================================
+
+function d2SetupMulti(
+    type,
+    id
+){
+
+    const root =
+        document.getElementById(id);
+
+
+    const menu =
+        root.querySelector(
+            ".multi-menu"
+        );
+
+
+    const button =
+        root.querySelector(
+            "button"
+        );
+
+
+    menu.innerHTML = "";
+
+
+    const search =
+        document.createElement(
+            "input"
+        );
+
+
+    search.className =
+        "multi-search";
+
+
+    search.placeholder =
+        "🔍 Search...";
+
+
+    menu.appendChild(
+        search
+    );
+
+
+    const all =
+        document.createElement(
+            "label"
+        );
+
+
+    all.className =
+        "multi-all";
+
+
+    all.innerHTML = `
+
+        <input
+            type="checkbox"
+            checked
+        >
+
+        All
+
+    `;
+
+
+    menu.appendChild(all);
+
+
+    const list =
+        document.createElement(
+            "div"
+        );
+
+
+    menu.appendChild(list);
+
+
+    d2Values(type)
+        .forEach(value => {
+
+            const label =
+                document.createElement(
+                    "label"
+                );
+
+
+            label.innerHTML = `
+
+                <input
+                    type="checkbox"
+                    value="${escapeHtml(value)}"
+                >
+
+                ${escapeHtml(value)}
+
+            `;
+
+
+            list.appendChild(
+                label
+            );
+
+        });
+
+
+    const allCheckbox =
+        all.querySelector(
+            "input"
+        );
+
+
+    allCheckbox.onchange =
+        function(){
+
+            if(this.checked){
+
+                d2Selected[type]
+                    .clear();
+
+
+                list
+                    .querySelectorAll(
+                        "input"
+                    )
+                    .forEach(
+                        x =>
+                        x.checked = false
+                    );
+
+
+                button.textContent =
+                    "All " +
+                    type.toUpperCase() +
+                    " ▾";
+
+            }
+
+            else{
+
+                list
+                    .querySelectorAll(
+                        "input"
+                    )
+                    .forEach(
+                        x =>
+                        x.checked = true
+                    );
+
+
+                d2Values(type)
+                    .forEach(
+                        value =>
+                        d2Selected[type]
+                            .add(value)
+                    );
+
+
+                button.textContent =
+                    d2Selected[type].size +
+                    " Selected ▾";
+
+            }
+
+
+            d2Update();
+
+        };
+
+
+    list
+        .querySelectorAll(
+            "input"
+        )
+        .forEach(
+            checkbox => {
+
+                checkbox.onchange =
+                    function(){
+
+                        if(this.checked){
+
+                            d2Selected[type]
+                                .add(
+                                    this.value
+                                );
+
+                        }
+
+                        else{
+
+                            d2Selected[type]
+                                .delete(
+                                    this.value
+                                );
+
+                        }
+
+
+                        allCheckbox.checked =
+                            d2Selected[type].size === 0;
+
+
+                        button.textContent =
+                            d2Selected[type].size
+
+                            ?
+
+                            d2Selected[type].size +
+                            " Selected ▾"
+
+                            :
+
+                            "All " +
+                            type.toUpperCase() +
+                            " ▾";
+
+
+                        d2Update();
+
+                    };
+
+            }
+        );
+
+
+    search.oninput =
+        function(){
+
+            const text =
+                this.value.toLowerCase();
+
+
+            list
+                .querySelectorAll(
+                    "label"
+                )
+                .forEach(
+                    label => {
+
+                        label.style.display =
+                            label.textContent
+                                .toLowerCase()
+                                .includes(text)
+                            ? "block"
+                            : "none";
+
+                    }
+                );
+
+        };
+
+}
+
+
+// ============================================================
+// D2 FILTERED
+// ============================================================
+
+function d2FilteredRows(){
+
+    const from =
+        document.getElementById(
+            "d2-from"
+        ).value
+
+        ?
+
+        new Date(
+            document.getElementById(
+                "d2-from"
+            ).value
+        )
+
+        :
+
+        null;
+
+
+    const to =
+        document.getElementById(
+            "d2-to"
+        ).value
+
+        ?
+
+        new Date(
+            document.getElementById(
+                "d2-to"
+            ).value +
+            "T23:59:59"
+        )
+
+        :
+
+        null;
+
+
+    const typeColumn =
+        d2FindColumn(
+            ["TYPE"]
+        );
+
+
+    const brandColumn =
+        d2FindColumn(
+            [
+                "BRAND NAME",
+                "BRAND"
+            ]
+        );
+
+
+    const dealerColumn =
+        d2FindColumn(
+            [
+                "DEALER NAME",
+                "DEALER"
+            ]
+        );
+
+
+    const dateColumn =
+        d2FindColumn(
+            [
+                "DATE",
+                "Invoice Date",
+                "Sales Date"
+            ]
+        );
+
+
+    return d2Data.filter(row => {
+
+        const rowDate =
+            d2Date(
+                row[dateColumn]
+            );
+
+
+        return (
+
+            (
+                !d2Selected.fy.size
+                ||
+                d2Selected.fy.has(
+                    d2FY(row)
+                )
+            )
+
+            &&
+
+            (
+                !d2Selected.type.size
+                ||
+                d2Selected.type.has(
+                    String(
+                        row[typeColumn] || ""
+                    ).trim()
+                )
+            )
+
+            &&
+
+            (
+                !d2Selected.brand.size
+                ||
+                d2Selected.brand.has(
+                    String(
+                        row[brandColumn] || ""
+                    ).trim()
+                )
+            )
+
+            &&
+
+            (
+                !d2Selected.dealer.size
+                ||
+                d2Selected.dealer.has(
+                    String(
+                        row[dealerColumn] || ""
+                    ).trim()
+                )
+            )
+
+            &&
+
+            (
+                (!from && !to)
+
+                ||
+
+                (
+                    rowDate
+
+                    &&
+
+                    (!from ||
+                        rowDate >= from)
+
+                    &&
+
+                    (!to ||
+                        rowDate <= to)
+                )
+
+            )
+
+        );
+
+    });
+
+}
+
+
+// ============================================================
+// D2 KPI
+// ============================================================
+
+function d2UpdateKPI(rows){
+
+    let target = 0;
+
+    let sale = 0;
+
+    let ret = 0;
+
+    const dealers =
+        new Set();
+
+
+    rows.forEach(row => {
+
+        target +=
+            targetOf(row);
+
+        sale +=
+            saleOf(row);
+
+        ret +=
+            returnOf(row);
+
+
+        if(
+            row["DEALER NAME"]
+        ){
+
+            dealers.add(
+                row["DEALER NAME"]
+            );
+
+        }
+
+    });
+
+
+    const net =
+        sale - ret;
+
+
+    document.getElementById(
+        "d2-target"
+    ).textContent =
+        money(target);
+
+
+    document.getElementById(
+        "d2-sales"
+    ).textContent =
+        money(sale);
+
+
+    document.getElementById(
+        "d2-return"
+    ).textContent =
+        money(ret);
+
+
+    document.getElementById(
+        "d2-net"
+    ).textContent =
+        money(net);
+
+
+    document.getElementById(
+        "d2-achieve"
+    ).textContent =
+        pct(
+            target
+            ? net / target * 100
+            : 0
+        );
+
+
+    document.getElementById(
+        "d2-return-pct"
+    ).textContent =
+        pct(
+            sale
+            ? ret / sale * 100
+            : 0
+        );
+
+
+    document.getElementById(
+        "d2-dealers"
+    ).textContent =
+        numberFmt(
+            dealers.size
+        );
+
+}
+
+
+// ============================================================
+// D2 TABLE
+// ============================================================
+
+function d2BuildTable(rows){
+
+    const table =
+        document.getElementById(
+            "dashboard2-table"
+        );
+
+
+    const brandColumn =
+        d2FindColumn(
+            [
+                "BRAND NAME",
+                "BRAND"
+            ]
+        );
+
+
+    const years = [
+
+        ...new Set(
+            rows
+            .map(d2FY)
+            .filter(Boolean)
+        )
+
+    ]
+
+    .sort(
+        (a,b) =>
+        String(b).localeCompare(
+            String(a),
+            undefined,
+            {
+                numeric:true
+            }
+        )
+    )
+
+    .slice(0,3);
+
+
+    const groups = {};
+
+
+    rows.forEach(row => {
+
+        const brand =
+            String(
+                row[brandColumn] || ""
+            ).trim();
+
+
+        const fy =
+            d2FY(row);
+
+
+        if(
+            !brand ||
+            !fy
+        ){
+
+            return;
+
+        }
+
+
+        const key =
+            brand + "|" + fy;
+
+
+        if(!groups[key]){
+
+            groups[key] = {
+
+                target:0,
+
+                qty:0,
+
+                net:0
+
+            };
+
+        }
+
+
+        groups[key].target +=
+            targetOf(row);
+
+
+        groups[key].qty +=
+            qtySaleOf(row) -
+            qtyReturnOf(row);
+
+
+        groups[key].net +=
+            netOf(row);
+
+    });
+
+
+    const brands = [
+
+        ...new Set(
+
+            rows
+
+            .map(
+                row =>
+                String(
+                    row[brandColumn] || ""
+                ).trim()
+            )
+
+            .filter(Boolean)
+
+        )
+
+    ].sort();
+
+
+    let html = `
+
+        <thead>
+
+            <tr>
+
+                <th rowspan="2">
+                    BRAND NAME
+                </th>
+
+    `;
+
+
+    years.forEach(year => {
+
+        html += `
+
+            <th colspan="4">
+                ${escapeHtml(year)}
+            </th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th colspan="2">
+                GROWTH %
+            </th>
+
+            </tr>
+
+            <tr>
+
+    `;
+
+
+    years.forEach(() => {
+
+        html += `
+
+            <th>TARGET</th>
+
+            <th>NET QTY</th>
+
+            <th>NET VALUE</th>
+
+            <th>ACHIEVE %</th>
+
+        `;
+
+    });
+
+
+    html += `
+
+            <th>CY vs PY</th>
+
+            <th>PY vs 2Y AGO</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
+
+    brands.forEach(brand => {
+
+        const values =
+            years.map(
+                year =>
+                groups[
+                    brand +
+                    "|" +
+                    year
+                ] || {
+
+                    target:0,
+
+                    qty:0,
+
+                    net:0
+
+                }
+            );
+
+
+        html += `
+
+            <tr>
+
+                <td>
+                    ${escapeHtml(brand)}
+                </td>
+
+        `;
+
+
+        values.forEach(value => {
+
+            html += `
+
+                <td>
+                    ${money(value.target)}
+                </td>
+
+                <td>
+                    ${numberFmt(value.qty)}
+                </td>
+
+                <td>
+                    ${money(value.net)}
+                </td>
+
+                <td>
+                    ${
+                        pct(
+                            value.target
+                            ? value.net /
+                              value.target *
+                              100
+                            : 0
+                        )
+                    }
+                </td>
+
+            `;
+
+        });
+
+
+        let g1 =
+
+            values.length > 1 &&
+            values[1].net !== 0
+
+            ?
+
+            (
+                (
+                    values[0].net -
+                    values[1].net
+                )
+                /
+                Math.abs(
+                    values[1].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        let g2 =
+
+            values.length > 2 &&
+            values[2].net !== 0
+
+            ?
+
+            (
+                (
+                    values[1].net -
+                    values[2].net
+                )
+                /
+                Math.abs(
+                    values[2].net
+                )
+            ) * 100
+
+            :
+
+            null;
+
+
+        html += `
+
+            <td
+                class="${
+                    g1 == null
+                    ? ""
+                    : g1 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g1 == null
+                    ? "—"
+                    : pct(g1) +
+                      (
+                        g1 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+
+            <td
+                class="${
+                    g2 == null
+                    ? ""
+                    : g2 >= 0
+                    ? "growth-positive"
+                    : "growth-negative"
+                }"
+            >
+
+                ${
+                    g2 == null
+                    ? "—"
+                    : pct(g2) +
+                      (
+                        g2 >= 0
+                        ? " ↑"
+                        : " ↓"
+                      )
+                }
+
+            </td>
+
+        </tr>
+
+        `;
+
+    });
+
+
+    html += `
+
+        </tbody>
+
+    `;
+
+
+    table.innerHTML = html;
+
+}
+
+
+// ============================================================
+// D2 UPDATE
+// ============================================================
+
+function d2Update(){
+
+    const rows =
+        d2FilteredRows();
+
+
+    d2UpdateKPI(rows);
+
+    d2BuildTable(rows);
+
+}
+
+
+// ============================================================
+// LOAD D2
+// ============================================================
+
+async function loadDashboard2(){
+
+    try{
+
+        const response =
+            await fetch(
+                CSV_URL +
+                "&t=" +
+                Date.now()
+            );
+
+
+        if(!response.ok){
+
+            throw new Error(
+                "load failed"
+            );
+
+        }
+
+
+        const parsed =
+            parseCSV(
+                await response.text()
+            );
+
+
+        d2Headers =
+            Object.keys(
+                parsed[0] || {}
+            );
+
+
+        d2Data =
+            parsed;
+
+
+        d2SetupMulti(
+            "fy",
+            "d2-fy"
+        );
+
+
+        d2SetupMulti(
+            "type",
+            "d2-type"
+        );
+
+
+        d2SetupMulti(
+            "brand",
+            "d2-brand"
+        );
+
+
+        d2SetupMulti(
+            "dealer",
+            "d2-dealer"
+        );
+
+
+        document.getElementById(
+            "d2-from"
+        ).onchange =
+            d2Update;
+
+
+        document.getElementById(
+            "d2-to"
+        ).onchange =
+            d2Update;
+
+
+        d2Update();
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        alert(
+            "Dashboard 2 ka Google Sheet data load nahi hua."
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// RESET DASHBOARD 2
+// ============================================================
+
+function resetDashboard2(){
+
+    d2Selected = {
+
+        fy:new Set(),
+
+        type:new Set(),
+
+        brand:new Set(),
+
+        dealer:new Set()
+
+    };
+
+
+    document
+        .querySelectorAll(
+            "#dashboard2 .multi-menu input[type=checkbox]"
+        )
+        .forEach(
+            checkbox =>
+            checkbox.checked = false
+        );
+
+
+    document
+        .querySelectorAll(
+            "#dashboard2 .multi-select button"
+        )
+        .forEach(
+            (button,index) => {
+
+                button.textContent = [
+
+                    "All FY ▾",
+
+                    "All TYPE ▾",
+
+                    "All BRAND ▾",
+
+                    "All DEALER ▾"
+
+                ][index];
+
+            }
+        );
+
+
+    document.getElementById(
+        "d2-from"
+    ).value = "";
+
+
+    document.getElementById(
+        "d2-to"
+    ).value = "";
+
+
+    d2Update();
+
+}
+
+
+// ============================================================
+// START
+// ============================================================
 
 loadData();
