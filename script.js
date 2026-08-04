@@ -8,8 +8,19 @@ const CSV_URL =
 
 
 let allData = [];
-
 let charts = {};
+
+// ============================================================
+// GLOBAL DATA LOADER
+// Google Sheet sirf EK BAAR load hoga
+// Dashboard 1 + Dashboard 2 same data use karenge
+// ============================================================
+
+let sharedDataPromise = null;
+let dataLoaded = false;
+
+const DATA_CACHE_KEY = "ssquare_sales_dashboard_data";
+const DATA_CACHE_TIME = 2 * 60 * 1000; // 2 minutes
 
 
 // ============================================================
@@ -424,58 +435,361 @@ function escapeHtml(s){
 // LOAD DATA
 // ============================================================
 
-async function loadData(){
+// ============================================================
+// FAST SHARED GOOGLE SHEET LOADER
+// ============================================================
 
-    try{
+async function loadGoogleSheetData() {
 
-        const response =
-            await fetch(
+    // Already loading / loaded
+    if (sharedDataPromise) {
+        return sharedDataPromise;
+    }
+
+    sharedDataPromise = (async () => {
+
+        showDataLoading("🔄 Loading Google Sheet Data...");
+
+        try {
+
+            // ------------------------------------------------
+            // STEP 1: Cached data se dashboard turant dikhao
+            // ------------------------------------------------
+
+            try {
+
+                const cached = localStorage.getItem(DATA_CACHE_KEY);
+
+                if (cached) {
+
+                    const obj = JSON.parse(cached);
+
+                    if (
+                        obj.time &&
+                        Array.isArray(obj.data) &&
+                        Date.now() - obj.time < DATA_CACHE_TIME
+                    ) {
+
+                        allData = obj.data;
+
+                        console.log(
+                            "Using cached data:",
+                            allData.length,
+                            "rows"
+                        );
+
+                    }
+
+                }
+
+            } catch (cacheError) {
+
+                console.warn(
+                    "Cache read failed:",
+                    cacheError
+                );
+
+            }
+
+
+            // ------------------------------------------------
+            // STEP 2: Agar cache mila to pehle dashboard dikhao
+            // ------------------------------------------------
+
+            if (allData.length) {
+
+                dataLoaded = true;
+
+                setupD1Filters();
+                updateDashboard1();
+
+                showDataLoading(
+                    "🔄 Syncing latest Google Sheet data..."
+                );
+
+            }
+
+
+            // ------------------------------------------------
+            // STEP 3: Latest Google Sheet data fetch
+            // ------------------------------------------------
+
+            const url =
                 CSV_URL +
                 "&t=" +
-                Date.now()
+                Date.now();
+
+            const controller =
+                new AbortController();
+
+            const timeout =
+                setTimeout(
+                    () => controller.abort(),
+                    30000
+                );
+
+            const response =
+                await fetch(
+                    url,
+                    {
+                        method: "GET",
+                        cache: "no-store",
+                        signal: controller.signal
+                    }
+                );
+
+            clearTimeout(timeout);
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Google Sheet HTTP Error: " +
+                    response.status
+                );
+
+            }
+
+
+            const text =
+                await response.text();
+
+            const freshData =
+                parseCSV(text);
+
+
+            if (!freshData.length) {
+
+                throw new Error(
+                    "Google Sheet returned empty data"
+                );
+
+            }
+
+
+            // ------------------------------------------------
+            // STEP 4: Latest data save
+            // ------------------------------------------------
+
+            allData = freshData;
+
+            dataLoaded = true;
+
+
+            try {
+
+                localStorage.setItem(
+                    DATA_CACHE_KEY,
+                    JSON.stringify({
+                        time: Date.now(),
+                        data: allData
+                    })
+                );
+
+            } catch (cacheError) {
+
+                console.warn(
+                    "Cache save failed:",
+                    cacheError
+                );
+
+            }
+
+
+            // ------------------------------------------------
+            // STEP 5: Dashboard 1 update
+            // ------------------------------------------------
+
+            setupD1Filters();
+
+            updateDashboard1();
+
+
+            // ------------------------------------------------
+            // STEP 6: Dashboard 2 agar already open/load ho
+            // ------------------------------------------------
+
+            d2Data = allData;
+            d2Headers =
+                Object.keys(allData[0] || {});
+
+
+            if (
+                document.getElementById("dashboard2") &&
+                document.getElementById("dashboard2").style.display !== "none"
+            ) {
+
+                d2SetupMulti("fy", "d2-fy");
+                d2SetupMulti("type", "d2-type");
+                d2SetupMulti("brand", "d2-brand");
+                d2SetupMulti("dealer", "d2-dealer");
+
+                d2Update();
+
+            }
+
+
+            // ------------------------------------------------
+            // DONE
+            // ------------------------------------------------
+
+            showDataLoading(
+                "✓ Data Synced • " +
+                numberFmt(allData.length) +
+                " Rows"
             );
 
 
-        if(!response.ok){
-
-            throw new Error(
-                "Google Sheet load failed"
+            setTimeout(
+                hideDataLoading,
+                1800
             );
+
+
+            console.log(
+                "Google Sheet synced:",
+                allData.length,
+                "rows"
+            );
+
+
+            return allData;
+
+
+        } catch (error) {
+
+            console.error(
+                "Google Sheet Load Error:",
+                error
+            );
+
+
+            // ------------------------------------------------
+            // Cache available ho to dashboard ko chalne do
+            // ------------------------------------------------
+
+            if (allData.length) {
+
+                dataLoaded = true;
+
+                setupD1Filters();
+                updateDashboard1();
+
+                showDataLoading(
+                    "⚠ Latest sync failed • Showing saved data"
+                );
+
+                setTimeout(
+                    hideDataLoading,
+                    3500
+                );
+
+                return allData;
+
+            }
+
+
+            showDataLoading(
+                "❌ Google Sheet data load failed"
+            );
+
+
+            alert(
+                "Google Sheet se data load nahi ho pa raha hai.\n\n" +
+                "Internet connection aur Published CSV link check karein."
+            );
+
+
+            throw error;
 
         }
 
-
-        const text =
-            await response.text();
+    })();
 
 
-        allData =
-            parseCSV(text);
+    return sharedDataPromise;
+}
 
 
-        if(!allData.length){
+// ============================================================
+// LOADING STATUS
+// ============================================================
 
-            throw new Error(
-                "No data found"
-            );
+function showDataLoading(message) {
 
-        }
+    let box =
+        document.getElementById(
+            "dataSyncStatus"
+        );
 
 
-        setupD1Filters();
+    if (!box) {
 
-        updateDashboard1();
+        box =
+            document.createElement("div");
 
+        box.id =
+            "dataSyncStatus";
+
+
+        box.style.cssText = `
+            position:fixed;
+            top:15px;
+            right:15px;
+            z-index:999999;
+
+            background:#ffffff;
+            color:#0878bd;
+
+            border:1px solid #b9e3ff;
+            border-radius:22px;
+
+            padding:9px 16px;
+
+            font-size:12px;
+            font-weight:700;
+
+            box-shadow:0 5px 20px rgba(0,0,0,.12);
+
+            transition:all .3s ease;
+        `;
+
+
+        document.body.appendChild(box);
 
     }
 
-    catch(error){
 
-        console.error(error);
+    box.textContent =
+        message;
 
-        alert(
-            "Google Sheet se data load nahi ho pa raha hai."
+    box.style.display =
+        "block";
+
+}
+
+
+function hideDataLoading() {
+
+    const box =
+        document.getElementById(
+            "dataSyncStatus"
         );
+
+    if (box) {
+
+        box.style.opacity =
+            "0";
+
+        setTimeout(() => {
+
+            box.style.display =
+                "none";
+
+            box.style.opacity =
+                "1";
+
+        }, 300);
 
     }
 
@@ -3847,60 +4161,46 @@ function d2Update(){
 // LOAD D2
 // ============================================================
 
-async function loadDashboard2(){
+async function loadDashboard2() {
 
-    try{
+    try {
 
-        const response =
-            await fetch(
-                CSV_URL +
-                "&t=" +
-                Date.now()
-            );
+        // Dashboard 1 ka same loaded data use karega
+        await loadGoogleSheetData();
 
 
-        if(!response.ok){
+        if (!allData.length) {
 
             throw new Error(
-                "load failed"
+                "No data available"
             );
 
         }
 
 
-        const parsed =
-            parseCSV(
-                await response.text()
-            );
-
+        d2Data = allData;
 
         d2Headers =
             Object.keys(
-                parsed[0] || {}
+                allData[0] || {}
             );
 
 
-        d2Data =
-            parsed;
-
-
+        // Dashboard 2 filters
         d2SetupMulti(
             "fy",
             "d2-fy"
         );
-
 
         d2SetupMulti(
             "type",
             "d2-type"
         );
 
-
         d2SetupMulti(
             "brand",
             "d2-brand"
         );
-
 
         d2SetupMulti(
             "dealer",
@@ -3910,32 +4210,27 @@ async function loadDashboard2(){
 
         document.getElementById(
             "d2-from"
-        ).onchange =
-            d2Update;
+        ).onchange = d2Update;
 
 
         document.getElementById(
             "d2-to"
-        ).onchange =
-            d2Update;
+        ).onchange = d2Update;
 
 
         d2Update();
 
-    }
 
-    catch(error){
+    } catch (e) {
 
-        console.error(error);
-
-        alert(
-            "Dashboard 2 ka Google Sheet data load nahi hua."
+        console.error(
+            "Dashboard 2 Error:",
+            e
         );
 
     }
 
 }
-
 
 // ============================================================
 // RESET DASHBOARD 2
@@ -4005,7 +4300,7 @@ function resetDashboard2(){
 
 
 // ============================================================
-// START
+// START DASHBOARD
 // ============================================================
 
-loadData();
+loadGoogleSheetData();
