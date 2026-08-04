@@ -1,309 +1,653 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>S Square Marketing - Sales Dashboard</title>
+
 <link rel="stylesheet" href="style.css">
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
+
 <div class="container">
-  <div class="header">
 
-    <div class="logo-area">
-        <img 
-            src="https://drive.google.com/thumbnail?sz=w100&id=1XHcnSayxWIZ3v0ZxE1VVVQFripxwCVTc"
-            alt="S Square Logo"
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <div class="header">
+
+        <div class="logo-area">
+
+            <img
+                src="https://drive.google.com/thumbnail?sz=w100&id=1XHcnSayxWIZ3v0ZxE1VVVQFripxwCVTc"
+                alt="S Square Logo"
+            >
+
+        </div>
+
+        <div class="header-text">
+
+            <h1>
+                S Square Marketing Pvt. Ltd. & S Square Ventures
+            </h1>
+
+            <p>
+                Sales & Performance Analysis
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         DASHBOARD TABS
+    ====================================================== -->
+
+    <div class="dashboard-tabs">
+
+        <button
+            class="dash-tab active"
+            onclick="showDashboard(1)"
         >
+            Dashboard 1
+        </button>
+
+        <button
+            class="dash-tab"
+            onclick="showDashboard(2)"
+        >
+            Dashboard 2
+        </button>
+
     </div>
 
-    <div class="header-text">
-        <h1>S Square Marketing Pvt. Ltd. & S Square Ventures</h1>
-        <p>Sales & Performance Analysis</p>
-    </div>
 
+    <!-- =====================================================
+         DASHBOARD 1
+    ====================================================== -->
+
+    <section id="dashboard1">
+
+
+        <!-- =================================================
+             DASHBOARD 1 FILTERS
+        ================================================== -->
+
+        <div
+            id="d1Filters"
+            class="filters dashboard1-filters"
+        >
+
+            <!-- IMPORTANT:
+                 script.js automatically creates
+                 all 9 filters here.
+
+                 Order:
+
+                 ROW 1
+                 TYPE
+                 AGENT
+                 BRAND
+                 DEALER
+                 F YEAR
+
+                 ROW 2
+                 MONTH
+                 YEAR
+                 FY QUARTER
+                 SEASON
+                 RESET
+            -->
+
+
+            <!-- RESET FILTER -->
+            <div class="reset-filter-wrapper">
+
+                <button
+                    class="reset-filter-btn"
+                    type="button"
+                    onclick="resetFilters()"
+                >
+                    ↻ Reset Filter
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             DASHBOARD 1 KPI CARDS
+        ================================================== -->
+
+        <div class="cards">
+
+            <!-- TARGET -->
+            <div class="card">
+
+                <div class="card-title">
+                    TARGET VALUE
+                </div>
+
+                <div
+                    class="card-value"
+                    id="targetValue"
+                >
+                    ₹ 0
+                </div>
+
+            </div>
+
+
+            <!-- SALE -->
+            <div class="card">
+
+                <div class="card-title">
+                    SALE VALUE
+                </div>
+
+                <div
+                    class="card-value"
+                    id="saleValue"
+                >
+                    ₹ 0
+                </div>
+
+            </div>
+
+
+            <!-- RETURN -->
+            <div class="card">
+
+                <div class="card-title">
+                    RETURN VALUE
+                </div>
+
+                <div
+                    class="card-value"
+                    id="returnValue"
+                >
+                    ₹ 0
+                </div>
+
+            </div>
+
+
+            <!-- NET SALE -->
+            <div class="card">
+
+                <div class="card-title">
+                    NET SALE
+                </div>
+
+                <div
+                    class="card-value"
+                    id="netSaleValue"
+                >
+                    ₹ 0
+                </div>
+
+            </div>
+
+
+            <!-- ACHIEVE -->
+            <div class="card">
+
+                <div class="card-title">
+                    ACHIEVE %
+                </div>
+
+                <div
+                    class="card-value"
+                    id="achievePercent"
+                >
+                    0.00%
+                </div>
+
+            </div>
+
+
+            <!-- RETURN % -->
+            <div class="card">
+
+                <div class="card-title">
+                    RETURN %
+                </div>
+
+                <div
+                    class="card-value"
+                    id="returnPercent"
+                >
+                    0.00%
+                </div>
+
+            </div>
+
+
+            <!-- DEALER COUNT -->
+            <div class="card">
+
+                <div class="card-title">
+                    NO OF DEALER
+                </div>
+
+                <div
+                    class="card-value"
+                    id="dealerCount"
+                >
+                    0
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             DASHBOARD 1 CHART ROW 1
+        ================================================== -->
+
+        <div class="charts">
+
+
+            <!-- BRAND -->
+            <div class="chart-box">
+
+                <h2>
+                    Brand Wise Value
+                </h2>
+
+                <div class="chart-scroll">
+
+                    <div class="brand-chart-inner">
+
+                        <canvas id="brandChart"></canvas>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- MONTH -->
+            <div class="chart-box">
+
+                <h2>
+                    Month Wise Value
+                </h2>
+
+                <canvas id="monthChart"></canvas>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             DASHBOARD 1 CHART ROW 2
+        ================================================== -->
+
+        <div class="charts">
+
+
+            <!-- AGENT -->
+            <div class="chart-box">
+
+                <h2>
+                    Agent Wise Value
+                </h2>
+
+                <canvas id="agentChart"></canvas>
+
+            </div>
+
+
+            <!-- DEALER -->
+            <div class="chart-box">
+
+                <h2>
+                    Dealer Wise Value
+                </h2>
+
+                <canvas id="dealerChart"></canvas>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         DASHBOARD 2
+    ====================================================== -->
+
+    <section
+        id="dashboard2"
+        class="dashboard2"
+        style="display:none"
+    >
+
+
+        <!-- HEADER -->
+        <div class="dashboard2-header">
+
+            <div>
+
+                <h1>
+                    XYZ DASHBOARD
+                </h1>
+
+                <p>
+                    Brand / Dealer / Type / Financial Year Comparison
+                </p>
+
+            </div>
+
+
+            <button
+                class="reset-btn"
+                onclick="resetDashboard2()"
+            >
+                ↻ Reset Filters
+            </button>
+
+        </div>
+
+
+        <!-- =================================================
+             DASHBOARD 2 FILTERS
+        ================================================== -->
+
+        <div class="dashboard2-filters">
+
+
+            <!-- F YEAR -->
+            <div>
+
+                <label>
+                    F YEAR
+                </label>
+
+                <div
+                    class="multi-select"
+                    id="d2-fy"
+                >
+
+                    <button
+                        type="button"
+                        onclick="toggleMulti('d2-fy')"
+                    >
+                        All F YEAR ▾
+                    </button>
+
+                    <div class="multi-menu"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- TYPE -->
+            <div>
+
+                <label>
+                    TYPE
+                </label>
+
+                <div
+                    class="multi-select"
+                    id="d2-type"
+                >
+
+                    <button
+                        type="button"
+                        onclick="toggleMulti('d2-type')"
+                    >
+                        All TYPE ▾
+                    </button>
+
+                    <div class="multi-menu"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- BRAND -->
+            <div>
+
+                <label>
+                    BRAND
+                </label>
+
+                <div
+                    class="multi-select"
+                    id="d2-brand"
+                >
+
+                    <button
+                        type="button"
+                        onclick="toggleMulti('d2-brand')"
+                    >
+                        All BRAND ▾
+                    </button>
+
+                    <div class="multi-menu"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- DEALER -->
+            <div>
+
+                <label>
+                    DEALER
+                </label>
+
+                <div
+                    class="multi-select"
+                    id="d2-dealer"
+                >
+
+                    <button
+                        type="button"
+                        onclick="toggleMulti('d2-dealer')"
+                    >
+                        All DEALER ▾
+                    </button>
+
+                    <div class="multi-menu"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- FROM DATE -->
+            <div>
+
+                <label>
+                    FROM DATE
+                </label>
+
+                <input
+                    id="d2-from"
+                    type="date"
+                >
+
+            </div>
+
+
+            <!-- TO DATE -->
+            <div>
+
+                <label>
+                    TO DATE
+                </label>
+
+                <input
+                    id="d2-to"
+                    type="date"
+                >
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             DASHBOARD 2 KPI
+        ================================================== -->
+
+        <div class="dashboard2-kpis">
+
+
+            <div class="d2-card">
+
+                <small>
+                    TOTAL TARGET VALUE
+                </small>
+
+                <strong id="d2-target">
+                    ₹ 0
+                </strong>
+
+            </div>
+
+
+            <div class="d2-card">
+
+                <small>
+                    TOTAL SALE VALUE
+                </small>
+
+                <strong id="d2-sales">
+                    ₹ 0
+                </strong>
+
+            </div>
+
+
+            <div class="d2-card">
+
+                <small>
+                    TOTAL RETURN VALUE
+                </small>
+
+                <strong id="d2-return">
+                    ₹ 0
+                </strong>
+
+            </div>
+
+
+            <div class="d2-card">
+
+                <small>
+                    NET SALE
+                </small>
+
+                <strong id="d2-net">
+                    ₹ 0
+                </strong>
+
+            </div>
+
+
+            <div class="d2-card">
+
+                <small>
+                    ACHIEVE %
+                </small>
+
+                <strong id="d2-achieve">
+                    0.00%
+                </strong>
+
+            </div>
+
+
+            <div class="d2-card">
+
+                <small>
+                    RETURN %
+                </small>
+
+                <strong id="d2-return-pct">
+                    0.00%
+                </strong>
+
+            </div>
+
+
+            <div class="d2-card">
+
+                <small>
+                    NO OF DEALER
+                </small>
+
+                <strong id="d2-dealers">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             DASHBOARD 2 TABLE
+        ================================================== -->
+
+        <div class="dashboard2-table-card">
+
+            <h2>
+                BRAND WISE TARGET vs ACHIEVEMENT
+            </h2>
+
+            <div class="table-subtitle">
+                LAST 3 FINANCIAL YEARS COMPARISON
+            </div>
+
+            <div class="table-scroll">
+
+                <table id="dashboard2-table"></table>
+
+            </div>
+
+        </div>
+
+
+        <p class="note">
+
+            <b>Note:</b>
+            Net Sales = Total Sales − Total Return.
+            Growth is calculated on Net Value.
+
+        </p>
+
+    </section>
 
 </div>
-  <div class="dashboard-tabs">
-    <button class="dash-tab active" onclick="showDashboard(1)">Dashboard 1</button>
-    <button class="dash-tab" onclick="showDashboard(2)">Dashboard 2</button>
-  </div>
-
-  <section id="dashboard1">
-    <!-- DASHBOARD 1 FILTERS -->
-<div class="filters dashboard1-filters">
-
-    <!-- ROW 1 -->
-
-    <!-- TYPE -->
-    <div class="filter-box" id="typeFilterBox">
-        <button class="filter-button" type="button">
-            <span id="typeFilterText">All TYPE</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search Type..."
-                onkeyup="searchFilter('typeFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="typeFilterOptions"></div>
-        </div>
-    </div>
 
 
-    <!-- AGENT -->
-    <div class="filter-box" id="agentFilterBox">
-        <button class="filter-button" type="button">
-            <span id="agentFilterText">All AGENT NAME</span>
-            <span>⌄</span>
-        </button>
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
 
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search Agent..."
-                onkeyup="searchFilter('agentFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="agentFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- BRAND -->
-    <div class="filter-box" id="brandFilterBox">
-        <button class="filter-button" type="button">
-            <span id="brandFilterText">All BRAND NAME</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search Brand..."
-                onkeyup="searchFilter('brandFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="brandFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- DEALER -->
-    <div class="filter-box" id="dealerFilterBox">
-        <button class="filter-button" type="button">
-            <span id="dealerFilterText">All DEALER NAME</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search Dealer..."
-                onkeyup="searchFilter('dealerFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="dealerFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- F YEAR -->
-    <div class="filter-box" id="fyFilterBox">
-        <button class="filter-button" type="button">
-            <span id="fyFilterText">All F YEAR</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search F Year..."
-                onkeyup="searchFilter('fyFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="fyFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- ROW 2 -->
-
-    <!-- MONTH -->
-    <div class="filter-box" id="monthFilterBox">
-        <button class="filter-button" type="button">
-            <span id="monthFilterText">All MONTH</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search Month..."
-                onkeyup="searchFilter('monthFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="monthFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- YEAR -->
-    <div class="filter-box" id="yearFilterBox">
-        <button class="filter-button" type="button">
-            <span id="yearFilterText">All YEAR</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search Year..."
-                onkeyup="searchFilter('yearFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="yearFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- FY QUARTER -->
-    <div class="filter-box" id="quarterFilterBox">
-        <button class="filter-button" type="button">
-            <span id="quarterFilterText">All FY QUARTER</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search FY Quarter..."
-                onkeyup="searchFilter('quarterFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="quarterFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- SEASON -->
-    <div class="filter-box" id="seasonFilterBox">
-        <button class="filter-button" type="button">
-            <span id="seasonFilterText">All SEASON</span>
-            <span>⌄</span>
-        </button>
-
-        <div class="filter-dropdown">
-            <input
-                type="text"
-                class="filter-search"
-                placeholder="Search Season..."
-                onkeyup="searchFilter('seasonFilterBox', this.value)"
-            >
-
-            <label class="filter-option filter-all">
-                <input type="checkbox" class="select-all">
-                <span>All</span>
-            </label>
-
-            <div id="seasonFilterOptions"></div>
-        </div>
-    </div>
-
-
-    <!-- RESET FILTER -->
-    <div class="reset-filter-wrapper">
-        <button class="reset-filter-btn" onclick="resetFilters()">
-            ↻ Reset Filter
-        </button>
-    </div>
-
-</div>
-    <div class="charts">
-      <div class="chart-box"><h2>Brand Wise Value</h2><div class="chart-scroll"><div class="brand-chart-inner"><canvas id="brandChart"></canvas></div></div></div>
-      <div class="chart-box"><h2>Month Wise Value</h2><canvas id="monthChart"></canvas></div>
-    </div>
-    <div class="charts">
-      <div class="chart-box"><h2>Agent Wise Value</h2><canvas id="agentChart"></canvas></div>
-      <div class="chart-box"><h2>Dealer Wise Value</h2><canvas id="dealerChart"></canvas></div>
-    </div>
-  </section>
-
-  <section id="dashboard2" class="dashboard2" style="display:none">
-    <div class="dashboard2-header"><div><h1>XYZ DASHBOARD</h1><p>Brand / Dealer / Type / Financial Year Comparison</p></div><button class="reset-btn" onclick="resetDashboard2()">↻ Reset Filters</button></div>
-    <div class="dashboard2-filters">
-      <div><label>F YEAR</label><div class="multi-select" id="d2-fy"><button type="button" onclick="toggleMulti('d2-fy')">All F YEAR ▾</button><div class="multi-menu"></div></div></div>
-      <div><label>TYPE</label><div class="multi-select" id="d2-type"><button type="button" onclick="toggleMulti('d2-type')">All TYPE ▾</button><div class="multi-menu"></div></div></div>
-      <div><label>BRAND</label><div class="multi-select" id="d2-brand"><button type="button" onclick="toggleMulti('d2-brand')">All BRAND ▾</button><div class="multi-menu"></div></div></div>
-      <div><label>DEALER</label><div class="multi-select" id="d2-dealer"><button type="button" onclick="toggleMulti('d2-dealer')">All DEALER ▾</button><div class="multi-menu"></div></div></div>
-      <div><label>FROM DATE</label><input id="d2-from" type="date"></div>
-      <div><label>TO DATE</label><input id="d2-to" type="date"></div>
-    </div>
-    <div class="dashboard2-kpis">
-      <div class="d2-card"><small>TOTAL TARGET VALUE</small><strong id="d2-target">₹ 0</strong></div>
-      <div class="d2-card"><small>TOTAL SALE VALUE</small><strong id="d2-sales">₹ 0</strong></div>
-      <div class="d2-card"><small>TOTAL RETURN VALUE</small><strong id="d2-return">₹ 0</strong></div>
-      <div class="d2-card"><small>NET SALE</small><strong id="d2-net">₹ 0</strong></div>
-      <div class="d2-card"><small>ACHIEVE %</small><strong id="d2-achieve">0.00%</strong></div>
-      <div class="d2-card"><small>RETURN %</small><strong id="d2-return-pct">0.00%</strong></div>
-      <div class="d2-card"><small>NO OF DEALER</small><strong id="d2-dealers">0</strong></div>
-    </div>
-    <div class="dashboard2-table-card"><h2>BRAND WISE TARGET vs ACHIEVEMENT</h2><div class="table-subtitle">LAST 3 FINANCIAL YEARS COMPARISON</div><div class="table-scroll"><table id="dashboard2-table"></table></div></div>
-    <p class="note"><b>Note:</b> Net Sales = Total Sales − Total Return. Growth is calculated on Net Value.</p>
-  </section>
-</div>
 <script src="script.js"></script>
+
 </body>
 </html>
