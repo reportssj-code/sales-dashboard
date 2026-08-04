@@ -31,16 +31,246 @@
   </div>
 
   <section id="dashboard1">
-    <div class="filters" id="d1Filters"></div>
-    <div class="cards">
-      <div class="card"><div class="card-title">TARGET VALUE</div><div class="card-value" id="targetValue">₹ 0</div></div>
-      <div class="card"><div class="card-title">SALE VALUE</div><div class="card-value" id="saleValue">₹ 0</div></div>
-      <div class="card"><div class="card-title">RETURN VALUE</div><div class="card-value" id="returnValue">₹ 0</div></div>
-      <div class="card"><div class="card-title">NET SALE</div><div class="card-value" id="netSaleValue">₹ 0</div></div>
-      <div class="card"><div class="card-title">ACHIEVE %</div><div class="card-value" id="achievePercent">0%</div></div>
-      <div class="card"><div class="card-title">RETURN %</div><div class="card-value" id="returnPercent">0%</div></div>
-      <div class="card"><div class="card-title">NO OF DEALER</div><div class="card-value" id="dealerCount">0</div></div>
+    <!-- DASHBOARD 1 FILTERS -->
+<div class="filters dashboard1-filters">
+
+    <!-- ROW 1 -->
+
+    <!-- TYPE -->
+    <div class="filter-box" id="typeFilterBox">
+        <button class="filter-button" type="button">
+            <span id="typeFilterText">All TYPE</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search Type..."
+                onkeyup="searchFilter('typeFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="typeFilterOptions"></div>
+        </div>
     </div>
+
+
+    <!-- AGENT -->
+    <div class="filter-box" id="agentFilterBox">
+        <button class="filter-button" type="button">
+            <span id="agentFilterText">All AGENT NAME</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search Agent..."
+                onkeyup="searchFilter('agentFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="agentFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- BRAND -->
+    <div class="filter-box" id="brandFilterBox">
+        <button class="filter-button" type="button">
+            <span id="brandFilterText">All BRAND NAME</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search Brand..."
+                onkeyup="searchFilter('brandFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="brandFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- DEALER -->
+    <div class="filter-box" id="dealerFilterBox">
+        <button class="filter-button" type="button">
+            <span id="dealerFilterText">All DEALER NAME</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search Dealer..."
+                onkeyup="searchFilter('dealerFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="dealerFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- F YEAR -->
+    <div class="filter-box" id="fyFilterBox">
+        <button class="filter-button" type="button">
+            <span id="fyFilterText">All F YEAR</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search F Year..."
+                onkeyup="searchFilter('fyFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="fyFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- ROW 2 -->
+
+    <!-- MONTH -->
+    <div class="filter-box" id="monthFilterBox">
+        <button class="filter-button" type="button">
+            <span id="monthFilterText">All MONTH</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search Month..."
+                onkeyup="searchFilter('monthFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="monthFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- YEAR -->
+    <div class="filter-box" id="yearFilterBox">
+        <button class="filter-button" type="button">
+            <span id="yearFilterText">All YEAR</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search Year..."
+                onkeyup="searchFilter('yearFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="yearFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- FY QUARTER -->
+    <div class="filter-box" id="quarterFilterBox">
+        <button class="filter-button" type="button">
+            <span id="quarterFilterText">All FY QUARTER</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search FY Quarter..."
+                onkeyup="searchFilter('quarterFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="quarterFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- SEASON -->
+    <div class="filter-box" id="seasonFilterBox">
+        <button class="filter-button" type="button">
+            <span id="seasonFilterText">All SEASON</span>
+            <span>⌄</span>
+        </button>
+
+        <div class="filter-dropdown">
+            <input
+                type="text"
+                class="filter-search"
+                placeholder="Search Season..."
+                onkeyup="searchFilter('seasonFilterBox', this.value)"
+            >
+
+            <label class="filter-option filter-all">
+                <input type="checkbox" class="select-all">
+                <span>All</span>
+            </label>
+
+            <div id="seasonFilterOptions"></div>
+        </div>
+    </div>
+
+
+    <!-- RESET FILTER -->
+    <div class="reset-filter-wrapper">
+        <button class="reset-filter-btn" onclick="resetFilters()">
+            ↻ Reset Filter
+        </button>
+    </div>
+
+</div>
     <div class="charts">
       <div class="chart-box"><h2>Brand Wise Value</h2><div class="chart-scroll"><div class="brand-chart-inner"><canvas id="brandChart"></canvas></div></div></div>
       <div class="chart-box"><h2>Month Wise Value</h2><canvas id="monthChart"></canvas></div>
