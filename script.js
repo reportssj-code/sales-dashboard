@@ -59,4 +59,62 @@ function d2Update(){const rows=d2FilteredRows();d2UpdateKPI(rows);d2BuildTable(r
 async function loadDashboard2(){try{const r=await fetch(CSV_URL+'&t='+Date.now());if(!r.ok)throw Error('load failed');const parsed=parseCSV(await r.text());d2Headers=Object.keys(parsed[0]||{});d2Data=parsed;d2SetupMulti('fy','d2-fy');d2SetupMulti('type','d2-type');d2SetupMulti('brand','d2-brand');d2SetupMulti('dealer','d2-dealer');document.getElementById('d2-from').onchange=d2Update;document.getElementById('d2-to').onchange=d2Update;d2Update();}catch(e){console.error(e);alert('Dashboard 2 ka Google Sheet data load nahi hua.');}}
 function resetDashboard2(){d2Selected={fy:new Set(),type:new Set(),brand:new Set(),dealer:new Set()};document.querySelectorAll('#dashboard2 .multi-menu input[type=checkbox]').forEach(x=>x.checked=false);document.querySelectorAll('#dashboard2 .multi-select button').forEach((b,i)=>b.textContent=['All FY ▾','All TYPE ▾','All BRAND ▾','All DEALER ▾'][i]);document.getElementById('d2-from').value='';document.getElementById('d2-to').value='';d2Update();}
 
+// ============================================================
+// RESET DASHBOARD 1 FILTERS
+// ============================================================
+
+function resetFilters(){
+
+    Object.keys(d1Selected).forEach(id => {
+
+        d1Selected[id].clear();
+
+    });
+
+    document.querySelectorAll('#d1Filters .filter-box').forEach(box => {
+
+        const id = box.id;
+
+        const def = d1FilterDefs[id];
+
+        if(!def) return;
+
+        const label = def[1];
+
+        const allCb = box.querySelector('.filter-all input');
+
+        if(allCb){
+            allCb.checked = true;
+        }
+
+        box.querySelectorAll(
+            '.filter-dropdown input[type="checkbox"]'
+        ).forEach(cb => {
+
+            if(!cb.classList.contains('select-all')){
+                cb.checked = false;
+            }
+
+        });
+
+        updateD1Button(id,label);
+
+    });
+
+    document.querySelectorAll('#d1Filters .filter-search').forEach(input => {
+
+        input.value = '';
+
+    });
+
+    document.querySelectorAll('#d1Filters .filter-option').forEach(option => {
+
+        option.style.display = 'flex';
+
+    });
+
+    updateDashboard1();
+
+}
+
 loadData();
