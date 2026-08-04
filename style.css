@@ -848,16 +848,16 @@ body{
 
 .dashboard2-filters{
     display:grid;
-
-    /* Reset + 6 Filters = 7 columns */
     grid-template-columns:
         repeat(7, minmax(0, 1fr));
-
     gap:10px;
+
     margin-bottom:12px;
 
     position:relative;
     z-index:10000;
+
+    align-items:end;
 }
 
 .dashboard2-filters label{
