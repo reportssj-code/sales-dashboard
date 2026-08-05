@@ -948,9 +948,46 @@ body{
 }
 
 .multi-select.open .multi-menu{
-    display:block;
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+}
+.dashboard2-filters{
+    position:relative;
+    z-index:10000;
+    overflow:visible !important;
 }
 
+.dashboard2-filters > div{
+    position:relative;
+    overflow:visible !important;
+}
+
+.dashboard2-filters .multi-select{
+    position:relative;
+    z-index:10001;
+    overflow:visible !important;
+}
+
+.dashboard2-filters .multi-select.open{
+    z-index:999999;
+}
+
+.dashboard2-filters .multi-select.open .multi-menu{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+    position:absolute;
+    top:40px;
+    left:0;
+    width:100%;
+    min-height:80px;
+    max-height:250px;
+    background:#fff;
+    overflow-y:auto;
+    overflow-x:hidden;
+    z-index:999999;
+}
 .multi-menu label{
 
     display:block;
