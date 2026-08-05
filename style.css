@@ -1423,7 +1423,7 @@ body{
 
 }
 #d2-dealer .multi-menu label{
-    display:flex !important;
+    display:flex;
     align-items:flex-start !important;
     gap:6px !important;
     white-space:normal !important;
