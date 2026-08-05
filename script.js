@@ -2366,10 +2366,8 @@ function updateDealerTable(rows){
                 rows.forEach(row => {
 
                     if(
-                        String(
-                            row["F YEAR"] || ""
-                        ).trim() === year
-                    ){
+    d2FY(row) === year
+){
 
                         target +=
                             targetOf(row);
