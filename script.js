@@ -2924,14 +2924,47 @@ function showDashboard(n){
         );
 
 
-    if(
-        n === 2 &&
-        !d2Data.length
-    ){
+   if(n === 2){
+
+    if(!d2Data.length){
 
         loadDashboard2();
 
     }
+    else{
+
+        d2Data = allData;
+
+        d2Headers =
+            Object.keys(
+                allData[0] || {}
+            );
+
+        d2SetupMulti(
+            "fy",
+            "d2-fy"
+        );
+
+        d2SetupMulti(
+            "type",
+            "d2-type"
+        );
+
+        d2SetupMulti(
+            "brand",
+            "d2-brand"
+        );
+
+        d2SetupMulti(
+            "dealer",
+            "d2-dealer"
+        );
+
+        d2Update();
+
+    }
+
+}
 
 }
 
