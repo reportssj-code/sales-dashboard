@@ -695,7 +695,7 @@ async function loadGoogleSheetData() {
 
 
             alert(
-                "Data load nahi ho pa raha hai.\n\n" +
+                "Data not loading.\n\n" +
                 "Internet connection aur Published CSV link check karein."
             );
 
