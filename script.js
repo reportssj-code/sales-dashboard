@@ -4159,7 +4159,64 @@ function d2BuildTable(rows){
     });
 
 
+      // ========================================================
+    // TOTAL ROW
+    // ========================================================
+
+    let totalTarget = 0;
+    let totalQty = 0;
+    let totalNet = 0;
+
+    rows.forEach(row => {
+
+        totalTarget += targetOf(row);
+
+        totalQty +=
+            qtySaleOf(row) -
+            qtyReturnOf(row);
+
+        totalNet += netOf(row);
+
+    });
+
+
+    const totalAchievement =
+        totalTarget
+        ? (
+            totalNet /
+            totalTarget *
+            100
+        )
+        : 0;
+
+
     html += `
+
+        <tr class="total-row">
+
+            <td>TOTAL</td>
+
+            <td>
+                ${money(totalTarget)}
+            </td>
+
+            <td>
+                ${numberFmt(totalQty)}
+            </td>
+
+            <td>
+                ${money(totalNet)}
+            </td>
+
+            <td>
+                ${pct(totalAchievement)}
+            </td>
+
+            <td>—</td>
+
+            <td>—</td>
+
+        </tr>
 
         </tbody>
 
