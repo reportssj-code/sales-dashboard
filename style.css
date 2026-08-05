@@ -1436,3 +1436,76 @@ body{
     flex-shrink:0 !important;
     margin:2px 0 0 0 !important;
 }
+
+/* =========================================================
+   DASHBOARD 2 TABLE - CLEAN / DASHBOARD 1 STYLE
+========================================================= */
+
+#dashboard2 .dashboard2-table-card{
+    background:#fff;
+    border:1px solid #bde3ff;
+    border-radius:12px;
+    padding:10px;
+    overflow:hidden;
+}
+
+#dashboard2 .table-scroll{
+    width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+}
+
+#dashboard2 #dashboard2-table{
+    width:100%;
+    min-width:1250px;
+    border-collapse:collapse;
+    table-layout:auto;
+}
+
+#dashboard2 #dashboard2-table th{
+    background:#0878bd;
+    color:#fff;
+    border:1px solid #d5e7f5;
+    padding:7px 6px;
+    font-size:9px;
+    font-weight:700;
+    text-align:center;
+    white-space:nowrap;
+}
+
+#dashboard2 #dashboard2-table td{
+    border:1px solid #dce8f0;
+    padding:7px 6px;
+    font-size:9px;
+    text-align:right;
+    white-space:nowrap;
+}
+
+#dashboard2 #dashboard2-table td:first-child{
+    text-align:left;
+    font-weight:700;
+}
+
+#dashboard2 #dashboard2-table tbody tr:nth-child(even){
+    background:#f6fbff;
+}
+
+/* =========================================================
+   TOTAL ROW
+========================================================= */
+
+#dashboard2 #dashboard2-table tr.total-row{
+    background:#e8f4fc !important;
+}
+
+#dashboard2 #dashboard2-table tr.total-row td{
+    font-weight:800 !important;
+    color:#075b91;
+    border-top:2px solid #0878bd;
+    background:#e8f4fc !important;
+}
+
+#dashboard2 #dashboard2-table tr.total-row td:first-child{
+    color:#075b91;
+    text-align:left;
+}
