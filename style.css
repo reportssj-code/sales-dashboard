@@ -946,6 +946,11 @@ body{
 
     box-shadow:0 8px 25px rgba(0,0,0,.15);
 }
+.multi-menu{
+    color:#26384a !important;
+    visibility:visible;
+    opacity:1;
+}
 
 .multi-select.open .multi-menu{
     display:block !important;
@@ -1103,7 +1108,20 @@ body{
 
     overflow:hidden;
 }
+.dashboard2-filters{
+    position:relative;
+    z-index:999999;
+    overflow:visible !important;
+}
 
+.dashboard2-filters .multi-select{
+    position:relative;
+    z-index:999999;
+}
+
+.dashboard2-filters .multi-menu{
+    z-index:9999999 !important;
+}
 .dashboard2-table-card h2{
 
     text-align:center;
